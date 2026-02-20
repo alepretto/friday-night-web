@@ -17,7 +17,7 @@
 				{#each tabs as tab (tab)}
 					<button
 						onclick={() => (activeTab = tab)}
-						class="rounded-full px-20 py-2 text-sm font-medium transition-all duration-200
+						class="cursor-pointer rounded-full px-20 py-2 text-sm font-medium transition-all duration-200
               {activeTab === tab
 							? 'bg-tertiary text-white shadow-lg'
 							: 'text-white-500 hover:text-gray-300'}"

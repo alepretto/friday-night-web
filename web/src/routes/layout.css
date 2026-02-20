@@ -6,7 +6,11 @@
 	--color-secondary: #4f4f4f;
 	--color-tertiary: #2c303a;
 	--color-success: #27ae60;
-	--color-failed: --color-danger: #ff2d55;
+	--color-failed: #852221;
+
+	--color-friday-blue: #2f80ed;
+
+	--color-danger: #ff2d55;
 
 	--color-brand-light: #e0e7ff;
 	--color-brand-dark: #3730a3;

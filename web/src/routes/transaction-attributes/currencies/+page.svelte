@@ -1,6 +1,7 @@
 <script lang="ts">
 	import { SlidersHorizontal } from 'lucide-svelte';
-
+	import Table from '$lib/components/ui/Table.svelte';
+	import type { Column } from '$lib/components/ui/Table.svelte';
 	type CurrencyType = 'Fiat' | 'Cripto';
 
 	interface Currency {
@@ -10,6 +11,14 @@
 		type: CurrencyType;
 	}
 
+	const columns: Column<Currency>[] = [
+		{ key: 'id', label: 'ID' },
+		{ key: 'label', label: 'Label', align: 'center' },
+		{ key: 'symbol', label: 'Symbol', align: 'center' },
+		{ key: 'type', label: 'Type', align: 'center' },
+		{ key: 'actions', label: 'Actions', align: 'center' }
+	];
+
 	const currencies: Currency[] = [
 		{ id: 1, label: 'Brazilian Real', symbol: 'R$', type: 'Fiat' },
 		{ id: 2, label: 'United States Dollar', symbol: '$', type: 'Fiat' },
@@ -18,12 +27,10 @@
 		{ id: 5, label: 'Ethereum', symbol: 'ETH', type: 'Cripto' }
 	];
 
-	// Dicionário de cores por tipo
-	const typeBadgeClasses: Record<CurrencyType, string> = {
-		Fiat: 'bg-blue-600 border-blue-400 text-white',
-		Cripto: 'bg-red-900/60 border-red-500 text-red-200'
+	const typeBadge = {
+		Fiat: 'bg-friday-blue/50 border-blue-600 text-white',
+		Cripto: 'bg-failed/60 border border-red-900 text-red-200'
 	};
-
 	const totalPages = 68;
 	let currentPage = $state(1);
 
@@ -61,54 +68,31 @@
 		</div>
 
 		<button
-			class="cursor-pointer rounded-3xl border border-success/60 bg-success/40 px-10 py-4 transition-colors hover:bg-success"
+			class="cursor-pointer rounded-3xl border border-success/60 bg-success/40 px-10 py-3 transition-colors hover:bg-success"
 		>
 			New Currency
 		</button>
 	</div>
 
 	<div class="flex flex-col items-center justify-center font-sans">
-		<div
-			class="w-full max-w-6xl overflow-hidden rounded-2xl border border-white/10 bg-secondary/30 shadow-2xl"
-		>
-			<!-- Table -->
-			<table class="w-full text-sm text-gray-300">
-				<thead>
-					<tr class="border-b border-white/10 text-xs tracking-widest text-gray-400 uppercase">
-						<th class="px-6 py-5 text-left font-semibold">ID</th>
-						<th class="px-6 py-5 text-center font-semibold">Label</th>
-						<th class="px-6 py-5 text-center font-semibold">Symbol</th>
-						<th class="px-6 py-5 text-center font-semibold">Type</th>
-						<th class="px-6 py-5 text-center font-semibold">Actions</th>
-					</tr>
-				</thead>
-				<tbody>
-					{#each currencies as currency, i (i)}
-						<tr class="border-b border-white/5 transition-colors duration-150 hover:bg-white/30">
-							<td class="px-6 py-5 text-gray-400">{currency.id}</td>
-							<td class="px-6 py-5 text-center text-gray-200">{currency.label}</td>
-							<td class="px-6 py-5 text-center text-gray-200">{currency.symbol}</td>
-							<td class="px-6 py-5 text-center">
-								<span
-									class="inline-block rounded-full border px-5 py-1 text-xs font-semibold tracking-wide {typeBadgeClasses[
-										currency.type
-									]}"
-								>
-									{currency.type}
-								</span>
-							</td>
-							<td class="px-6 py-5 text-center">
-								<button
-									class="cursor-pointer text-amber-500 transition-colors duration-150 hover:text-amber-300"
-									aria-label="Configurar {currency.label}"
-								>
-									<SlidersHorizontal size={18} />
-								</button>
-							</td>
-						</tr>
-					{/each}
-				</tbody>
-			</table>
+		<div class="w-full max-w-7xl">
+			<Table data={currencies} {columns} rowKey="id">
+				{#snippet cell({ row, key })}
+					{#if key === 'type'}
+						<span
+							class="inline-block rounded-full border px-5 py-1 text-sm font-semibold {typeBadge[
+								row.type
+							]}"
+						>
+							{row.type}
+						</span>
+					{:else if key === 'actions'}
+						<button> <SlidersHorizontal size={18} /> </button>
+					{:else}
+						{row[key as keyof Currency]}
+					{/if}
+				{/snippet}
+			</Table>
 		</div>
 
 		<!-- Pagination -->
