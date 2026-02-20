@@ -49,24 +49,7 @@
 </script>
 
 <section>
-	<div class="flex items-center justify-between p-10">
-		<div class="flex w-full max-w-3xl gap-5">
-			{#each [{ id: 'category', label: 'Category' }, { id: 'subcategory', label: 'Subcategory' }, { id: 'type', label: 'Type' }] as field (field.id)}
-				<div class="flex w-full flex-col gap-1">
-					<label class="px-2 text-sm text-gray-400" for="transaction-tag-{field.id}">
-						{field.label}
-					</label>
-					<select
-						class="w-full rounded-xl bg-secondary/30 px-4 py-2 text-sm outline-none focus:ring-2 focus:ring-white/20"
-						name="transaction-tag-{field.id}"
-						id="transaction-tag-{field.id}"
-					>
-						<option value="">Selecione...</option>
-					</select>
-				</div>
-			{/each}
-		</div>
-
+	<div class="flex items-center justify-end p-10">
 		<button
 			class="cursor-pointer rounded-3xl border border-success/60 bg-success/40 px-10 py-3 transition-colors hover:bg-success"
 		>
