@@ -36,7 +36,7 @@
 		</thead>
 		<tbody>
 			{#each data as row (row[rowKey])}
-				<tr class="border-b border-white/5 transition-colors duration-150 hover:bg-white/[0.03]">
+				<tr class="border-b border-white/5 transition-colors duration-150 hover:bg-white/3">
 					{#each columns as col (col.key)}
 						<td class="px-6 py-5 {alignClass[col.align ?? 'left']}">
 							{#if cell}
