@@ -1,8 +1,17 @@
 <script lang="ts">
+	import { page } from '$app/state';
+	import { resolve } from '$app/paths';
+
 	let { children } = $props();
 
-	let activeTab = $state('Currencies');
-	const tabs = ['Transaction Tags', 'Payment Methods', 'Currencies'];
+	const tabs = [
+		{
+			label: 'Transaction Tags',
+			route: `/friday/transaction-attributes/transaction-tags`
+		},
+		{ label: 'Payment Methods', route: `/friday/transaction-attributes/payment-methods` },
+		{ label: 'Currencies', route: `/friday/transaction-attributes/currencies` }
+	] as const;
 </script>
 
 <div class="p-10">
@@ -14,16 +23,16 @@
 
 		<div class="p-10">
 			<div class="inline-flex w-fit rounded-full border border-white/10 bg-secondary/30 p-1">
-				{#each tabs as tab (tab)}
-					<button
-						onclick={() => (activeTab = tab)}
+				{#each tabs as tab (tab.route)}
+					<a
+						href={resolve(tab.route)}
 						class="cursor-pointer rounded-full px-20 py-2 text-sm font-medium transition-all duration-200
-              {activeTab === tab
+              {page.url.pathname === tab.route
 							? 'bg-tertiary text-white shadow-lg'
 							: 'text-white-500 hover:text-gray-300'}"
 					>
-						{tab}
-					</button>
+						{tab.label}
+					</a>
 				{/each}
 			</div>
 		</div>
