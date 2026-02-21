@@ -1,15 +1,7 @@
 <script lang="ts">
-	import AccountCard from './AccountCard.svelte';
-	type AccountType = 'bank' | 'investment' | 'cash' | 'benefict';
+	import AccountCard from './_components/AccountCard.svelte';
+	import type { Account } from '$lib/types/account';
 
-	interface Account {
-		id: number;
-		institution: string;
-		active: boolean;
-		type: AccountType;
-		logoPath: string;
-		subtype?: string | null;
-	}
 	const accounts: Account[] = [
 		{
 			id: 1,
