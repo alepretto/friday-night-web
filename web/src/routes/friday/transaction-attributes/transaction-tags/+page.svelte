@@ -102,7 +102,7 @@
 								<SlidersHorizontal size={25} />
 							</button>
 
-							{#if row.active}
+							{#if !row.active}
 								<button class="cursor-pointer text-success">
 									<CircleCheck size={25} />
 								</button>

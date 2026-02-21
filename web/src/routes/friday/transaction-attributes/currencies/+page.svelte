@@ -1,9 +1,9 @@
 <script lang="ts">
 	import { SlidersHorizontal } from 'lucide-svelte';
-	import Modal from '$lib/components/ui/Modal.svelte';
 
 	import Table from '$lib/components/ui/Table.svelte';
 	import type { Column } from '$lib/components/ui/Table.svelte';
+	import CurrencyModal from './CurrencyModal.svelte';
 	type CurrencyType = 'fiat' | 'crypto';
 
 	interface Currency {
@@ -53,73 +53,14 @@
 	let nextId = $state(6);
 	let openModal = $state(false);
 
-	let label = $state('');
-	let symbol = $state('');
-	let type: CurrencyType | '' = $state('');
-
-	function handleSave() {
-		if (!label.trim() || !symbol.trim()) return;
-		if (!type) return;
-
-		symbol = symbol.trim();
-		label = label.trim();
-		currencies.push({
-			id: nextId,
-			label,
-			symbol,
-			type
-		});
-		label = '';
-		symbol = '';
-		type = '';
+	function handleSave(data: { label: string; symbol: string; type: CurrencyType }) {
+		currencies.push({ id: nextId, ...data });
 		openModal = false;
+		nextId = nextId + 1;
 	}
 </script>
 
-<Modal
-	title="New Currency"
-	open={openModal}
-	onclose={() => (openModal = false)}
-	onsave={handleSave}
->
-	{#snippet body()}
-		<div class="flex flex-col gap-4">
-			<div class="flex w-full flex-col gap-3">
-				<label class="text-bold pl-4 text-xl" for="label">Descrição</label>
-				<input
-					bind:value={label}
-					class="w-full rounded-xl bg-white/10 px-4 py-2 text-white outline-none focus:ring-2 focus:ring-white/20"
-					type="text"
-					id="label"
-				/>
-			</div>
-			<div class="grid grid-cols-2 gap-4">
-				<div class="flex w-full flex-col gap-3">
-					<label class="text-bold pl-4 text-xl" for="symbol">Symbol</label>
-					<input
-						bind:value={symbol}
-						class="w-full rounded-xl bg-white/10 px-4 py-2 text-white outline-none focus:ring-2 focus:ring-white/20"
-						type="text"
-						id="symbol"
-					/>
-				</div>
-				<div class="flex w-full flex-col gap-3">
-					<label class="text-bold pl-4 text-xl" for="label">Type</label>
-					<select
-						name="currency-type"
-						id="currency-type"
-						bind:value={type}
-						class="w-full rounded-xl bg-white/10 px-4 py-2 text-white outline-none focus:ring-2 focus:ring-white/20"
-					>
-						<option class="px-4 py-2 text-black" value="">Selecione...</option>
-						<option class="px-4 py-2 text-black" value="fiat">Fiat</option>
-						<option class="px-4 py-2 text-black" value="crypto">Crypto</option>
-					</select>
-				</div>
-			</div>
-		</div>
-	{/snippet}
-</Modal>
+<CurrencyModal open={openModal} onclose={() => (openModal = false)} onsave={handleSave} />
 
 <section>
 	<div class="flex items-center justify-end p-10">
@@ -144,7 +85,9 @@
 							{row.type}
 						</span>
 					{:else if key === 'actions'}
-						<button> <SlidersHorizontal size={18} /> </button>
+						<button class="cursor-pointer text-friday-orange">
+							<SlidersHorizontal size={25} />
+						</button>
 					{:else}
 						{row[key as keyof Currency]}
 					{/if}
