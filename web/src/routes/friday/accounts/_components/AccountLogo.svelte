@@ -25,7 +25,7 @@
 	};
 </script>
 
-<div class="flex items-center gap-5 border-b border-b-white/20 pb-3">
+<div class="flex items-center gap-5">
 	<img src={logoPath} alt="" class={s.img} />
 	<div class="flex flex-col">
 		<span class="font-bold {s.title}">{institution}</span>

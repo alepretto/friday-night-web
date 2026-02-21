@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { goto } from '$app/navigation';
 	import type { Account, AccountType } from '$lib/types/account';
 	import AccountLogo from './AccountLogo.svelte';
 
@@ -10,7 +11,13 @@
 </script>
 
 <div class="flex min-w-md flex-col rounded-2xl border border-white/20 bg-secondary/30 px-4 py-5">
-	<AccountLogo institution={account.institution} logoPath={account.logoPath} type={account.type} />
+	<div class="border-b border-b-white/20 pb-3">
+		<AccountLogo
+			institution={account.institution}
+			logoPath={account.logoPath}
+			type={account.type}
+		/>
+	</div>
 
 	<div class="flex justify-between py-6">
 		<div class="flex flex-col gap-3 pl-3">
@@ -24,7 +31,12 @@
 		</div>
 		<div class="flex items-end">
 			<div class="grid grid-cols-3 gap-2 rounded-xl border-3 border-secondary/30 bg-tertiary">
-				<button class="cursor-pointer px-4 py-1 text-center hover:bg-secondary"> Ver </button>
+				<button
+					onclick={() => goto(`/friday/accounts/${account.id}/${account.type}`)}
+					class="cursor-pointer px-4 py-1 text-center hover:bg-secondary"
+				>
+					Ver
+				</button>
 				<button class="cursor-pointer px-4 py-1 text-center hover:bg-secondary"> Editar </button>
 				<button class="cursor-pointer px-4 py-1 text-center hover:bg-secondary">Arquivar</button>
 			</div>
