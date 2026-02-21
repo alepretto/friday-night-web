@@ -1,1 +1,1 @@
-<h1>Account Page</h1>
+<h1 class="text-white">Account Page</h1>

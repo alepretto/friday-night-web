@@ -11,6 +11,9 @@
 		MenuIcon
 	} from 'lucide-svelte';
 
+	import { goto } from '$app/navigation';
+	import { page } from '$app/state';
+	import { resolve } from '$app/paths';
 	let { children } = $props();
 
 	let sidebarOpen = $state(true);
@@ -23,12 +26,12 @@
 		{ label: 'Budget', icon: PiggyBankIcon, route: '/friday/budget' },
 		{ label: 'Goals', icon: CrosshairIcon, route: '/friday/goals' },
 		{ label: 'Events', icon: CalendarIcon, route: '/friday/events' }
-	];
+	] as const;
 
 	const bottomItems = [
 		{ label: 'Config', icon: SettingsIcon, route: '/friday/config' },
-		{ label: 'Logout', icon: LogOutIcon, route: '/logout' }
-	];
+		{ label: 'Logout', icon: LogOutIcon, route: '/friday' } //'/logout'
+	] as const;
 </script>
 
 <div class="flex h-screen w-screen flex-col overflow-hidden">
@@ -58,10 +61,10 @@
 			<nav class="flex flex-col items-center gap-5 pt-5">
 				{#each navItems as item}
 					<button
-						onclick={() => (activeRoute = item.route)}
+						onclick={() => goto(resolve(item.route))}
 						title={!sidebarOpen ? item.label : ''}
 						class="text-md flex w-full items-center gap-5 rounded-lg px-2.5 py-2 font-medium transition-all
-							{activeRoute === item.route
+							{page.url.pathname.startsWith(item.route)
 							? 'text-secondary-400 bg-white/80'
 							: 'text-slate-300 hover:bg-white/4 hover:text-slate-300'}"
 					>
@@ -77,7 +80,7 @@
 			<nav class="flex flex-col gap-0.5">
 				{#each bottomItems as item}
 					<button
-						onclick={() => (activeRoute = item.route)}
+						onclick={() => goto(resolve(item.route))}
 						title={!sidebarOpen ? item.label : ''}
 						class="text-md flex w-full items-center gap-5 rounded-lg px-2.5 py-2 font-medium transition-all
 							{activeRoute === item.route
