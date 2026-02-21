@@ -38,6 +38,22 @@
 		outcome: 'border-failed bg-failed/50',
 		income: 'border-success bg-success/50'
 	};
+
+	const totalPages = 68;
+	let currentPage = $state(1);
+
+	function getVisiblePages(current: number, total: number) {
+		if (total <= 5) return Array.from({ length: total }, (_, i) => i + 1);
+		const pages: (number | '...')[] = [1, 2, 3];
+		if (current > 4) pages.push('...');
+		if (current > 3 && current < total - 1) pages.push(current);
+		pages.push('...');
+		pages.push(total - 1, total);
+		// deduplica
+		return [...new Set(pages)];
+	}
+
+	const visiblePages = $derived(getVisiblePages(currentPage, totalPages));
 </script>
 
 <section>
@@ -66,7 +82,7 @@
 		</button>
 	</div>
 
-	<div class="flex flex-col items-center">
+	<div class="flex flex-col items-center justify-center">
 		<div class="w-full max-w-7xl">
 			<Table data={tags} {columns} rowKey="id">
 				{#snippet cell({ row, key })}
@@ -101,6 +117,25 @@
 					{/if}
 				{/snippet}
 			</Table>
+		</div>
+
+		<!-- Pagination -->
+		<div class="mt-8 flex items-center gap-1">
+			{#each visiblePages as page (page)}
+				{#if page === '...'}
+					<span class="px-2 text-sm text-gray-500 select-none">...</span>
+				{:else}
+					<button
+						onclick={() => (currentPage = page as number)}
+						class="h-9 w-9 cursor-pointer rounded-lg text-sm font-medium transition-all duration-150
+            	{currentPage === page
+							? 'bg-gray-600 text-white'
+							: 'text-gray-400 hover:bg-white/10 hover:text-white'}"
+					>
+						{page}
+					</button>
+				{/if}
+			{/each}
 		</div>
 	</div>
 </section>
