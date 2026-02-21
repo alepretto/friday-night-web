@@ -17,7 +17,6 @@
 	let { children } = $props();
 
 	let sidebarOpen = $state(true);
-	let activeRoute = $state('/friday/dashboard');
 
 	const navItems = [
 		{ label: 'Dashboard', icon: LayoutDashboardIcon, route: '/friday/dashboard' },
@@ -30,7 +29,7 @@
 
 	const bottomItems = [
 		{ label: 'Config', icon: SettingsIcon, route: '/friday/config' },
-		{ label: 'Logout', icon: LogOutIcon, route: '/friday' } //'/logout'
+		{ label: 'Logout', icon: LogOutIcon, route: '/friday/config' } //'/logout'
 	] as const;
 </script>
 
@@ -63,7 +62,7 @@
 					<button
 						onclick={() => goto(resolve(item.route))}
 						title={!sidebarOpen ? item.label : ''}
-						class="text-md flex w-full items-center gap-5 rounded-lg px-2.5 py-2 font-medium transition-all
+						class="flex w-full items-center gap-5 rounded-lg px-2.5 py-2 text-base font-medium transition-all
 							{page.url.pathname.startsWith(item.route)
 							? 'text-secondary-400 bg-white/80'
 							: 'text-slate-300 hover:bg-white/4 hover:text-slate-300'}"
@@ -83,7 +82,7 @@
 						onclick={() => goto(resolve(item.route))}
 						title={!sidebarOpen ? item.label : ''}
 						class="text-md flex w-full items-center gap-5 rounded-lg px-2.5 py-2 font-medium transition-all
-							{activeRoute === item.route
+							{page.url.pathname.startsWith(item.route)
 							? 'text-secondary-400 bg-white/80'
 							: 'text-slate-300 hover:bg-white/4 hover:text-slate-300'}"
 					>
