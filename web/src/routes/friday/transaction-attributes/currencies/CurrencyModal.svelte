@@ -24,7 +24,7 @@
 	}
 </script>
 
-<Modal title="New Currency" {open} onclose={() => (open = false)} onsave={handleSave}>
+<Modal title="New Currency" {open} {onclose} onsave={handleSave}>
 	{#snippet body()}
 		<div class="flex flex-col gap-4">
 			<div class="flex w-full flex-col gap-3">

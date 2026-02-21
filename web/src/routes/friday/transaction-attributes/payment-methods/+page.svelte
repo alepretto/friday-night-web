@@ -33,7 +33,7 @@
 	}
 </script>
 
-<PaymentMethodModal {open} onSave={createPaymentMethod} onClose={() => (open = false)} />
+<PaymentMethodModal {open} onSave={createPaymentMethod} onclose={() => (open = false)} />
 
 <section>
 	<div class="flex items-center justify-end p-10">
