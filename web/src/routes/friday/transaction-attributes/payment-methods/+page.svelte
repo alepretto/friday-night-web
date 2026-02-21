@@ -1,5 +1,7 @@
 <script lang="ts">
-	import { CircleCheck, CircleSlash } from 'lucide-svelte';
+	import { CircleCheck, CircleSlash, X } from 'lucide-svelte';
+
+	import PaymentMethodModal from './PaymentMethodModal.svelte';
 
 	interface PaymentMethod {
 		id: number;
@@ -7,18 +9,36 @@
 		active: boolean;
 	}
 
-	const methods: PaymentMethod[] = [
+	const methods: PaymentMethod[] = $state([
 		{ id: 1, label: 'Cartão de Crédito', active: true },
 		{ id: 2, label: 'Cartão de Débito', active: true },
 		{ id: 3, label: 'Vale Alimentação', active: false },
 		{ id: 4, label: 'Vale Refeição', active: true },
 		{ id: 5, label: 'Boleto', active: true }
-	];
+	]);
+
+	let open = $state(false);
+
+	let nextId = $state(6);
+
+	function createPaymentMethod(method: string) {
+		methods.push({
+			id: nextId,
+			label: method,
+			active: true
+		});
+
+		nextId = nextId + 1;
+		open = false;
+	}
 </script>
+
+<PaymentMethodModal {open} onSave={createPaymentMethod} onClose={() => (open = false)} />
 
 <section>
 	<div class="flex items-center justify-end p-10">
 		<button
+			onclick={() => (open = true)}
 			class="cursor-pointer rounded-3xl border border-success/60 bg-success/40 px-10 py-3 transition-colors hover:bg-success"
 		>
 			New Payment Method
