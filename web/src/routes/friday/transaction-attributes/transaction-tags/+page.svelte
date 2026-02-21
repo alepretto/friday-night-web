@@ -2,6 +2,7 @@
 	import { SlidersHorizontal, CircleCheck, CircleSlash } from 'lucide-svelte';
 	import Table from '$lib/components/ui/Table.svelte';
 	import type { Column } from '$lib/components/ui/Table.svelte';
+	import TransactionTagModal from './TransactionTagModal.svelte';
 
 	interface Tag {
 		id: number;
@@ -54,7 +55,20 @@
 	}
 
 	const visiblePages = $derived(getVisiblePages(currentPage, totalPages));
+
+	type TagType = 'outcome' | 'income';
+	let open = $state(false);
+
+	function handleSabe(data: {
+		type: TagType;
+		categoryId: number | null;
+		newCategory: string;
+		subcategoryId: number | null;
+		newSubcategory: string;
+	}) {}
 </script>
+
+<TransactionTagModal {open} onclose={() => (open = false)} onsave={handleSabe} />
 
 <section>
 	<div class="flex items-center justify-between p-10">
@@ -76,6 +90,7 @@
 		</div>
 
 		<button
+			onclick={() => (open = true)}
 			class="cursor-pointer rounded-3xl border border-success/60 bg-success/40 px-10 py-3 transition-colors hover:bg-success"
 		>
 			New Tag
