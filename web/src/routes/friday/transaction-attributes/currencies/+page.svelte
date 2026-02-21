@@ -1,8 +1,10 @@
 <script lang="ts">
 	import { SlidersHorizontal } from 'lucide-svelte';
+
 	import Table from '$lib/components/ui/Table.svelte';
 	import type { Column } from '$lib/components/ui/Table.svelte';
-	type CurrencyType = 'Fiat' | 'Cripto';
+	import CurrencyModal from './CurrencyModal.svelte';
+	type CurrencyType = 'fiat' | 'crypto';
 
 	interface Currency {
 		id: number;
@@ -19,17 +21,17 @@
 		{ key: 'actions', label: 'Actions', align: 'center' }
 	];
 
-	const currencies: Currency[] = [
-		{ id: 1, label: 'Brazilian Real', symbol: 'R$', type: 'Fiat' },
-		{ id: 2, label: 'United States Dollar', symbol: '$', type: 'Fiat' },
-		{ id: 3, label: 'Bitcoin', symbol: 'BTC', type: 'Cripto' },
-		{ id: 4, label: 'Tether', symbol: 'USDT', type: 'Cripto' },
-		{ id: 5, label: 'Ethereum', symbol: 'ETH', type: 'Cripto' }
-	];
+	const currencies: Currency[] = $state([
+		{ id: 1, label: 'Brazilian Real', symbol: 'R$', type: 'fiat' },
+		{ id: 2, label: 'United States Dollar', symbol: '$', type: 'fiat' },
+		{ id: 3, label: 'Bitcoin', symbol: 'BTC', type: 'crypto' },
+		{ id: 4, label: 'Tether', symbol: 'USDT', type: 'crypto' },
+		{ id: 5, label: 'Ethereum', symbol: 'ETH', type: 'crypto' }
+	]);
 
 	const typeBadge = {
-		Fiat: 'bg-friday-blue/50 border-blue-600 text-white',
-		Cripto: 'bg-failed/60 border border-red-900 text-red-200'
+		fiat: 'bg-friday-blue/50 border-blue-600 text-white',
+		crypto: 'bg-failed/60 border border-red-900 text-red-200'
 	};
 	const totalPages = 68;
 	let currentPage = $state(1);
@@ -46,11 +48,24 @@
 	}
 
 	const visiblePages = $derived(getVisiblePages(currentPage, totalPages));
+
+	// Campos Modais
+	let nextId = $state(6);
+	let openModal = $state(false);
+
+	function handleSave(data: { label: string; symbol: string; type: CurrencyType }) {
+		currencies.push({ id: nextId, ...data });
+		openModal = false;
+		nextId = nextId + 1;
+	}
 </script>
+
+<CurrencyModal open={openModal} onclose={() => (openModal = false)} onsave={handleSave} />
 
 <section>
 	<div class="flex items-center justify-end p-10">
 		<button
+			onclick={() => (openModal = true)}
 			class="cursor-pointer rounded-3xl border border-success/60 bg-success/40 px-10 py-3 transition-colors hover:bg-success"
 		>
 			New Currency
@@ -70,7 +85,9 @@
 							{row.type}
 						</span>
 					{:else if key === 'actions'}
-						<button> <SlidersHorizontal size={18} /> </button>
+						<button class="cursor-pointer text-friday-orange">
+							<SlidersHorizontal size={25} />
+						</button>
 					{:else}
 						{row[key as keyof Currency]}
 					{/if}
