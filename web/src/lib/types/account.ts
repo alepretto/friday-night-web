@@ -10,3 +10,14 @@ export interface Account {
     logoPath: string;
     subtype?: string | null;
 }
+
+export interface CardInfo {
+    id: number;
+    name: string;
+    flag: 'visa' | 'mastercard';
+    closing_day: number;
+    due_day: number;
+    limit: number;
+    bill: number;
+    total_bill: number;
+}
