@@ -16,7 +16,7 @@
 	import { resolve } from '$app/paths';
 	let { children } = $props();
 
-	let sidebarOpen = $state(true);
+	let sidebarOpen = $state(false);
 
 	const navItems = [
 		{ label: 'Dashboard', icon: LayoutDashboardIcon, route: '/friday/dashboard' },
