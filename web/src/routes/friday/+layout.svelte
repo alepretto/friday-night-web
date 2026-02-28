@@ -27,10 +27,7 @@
 		{ label: 'Events', icon: CalendarIcon, route: '/friday/events' }
 	] as const;
 
-	const bottomItems = [
-		{ label: 'Config', icon: SettingsIcon, route: '/friday/config' },
-		{ label: 'Logout', icon: LogOutIcon, route: '/friday/config' } //'/logout'
-	] as const;
+	const bottomItems = [{ label: 'Config', icon: SettingsIcon, route: '/friday/config' }] as const;
 </script>
 
 <div class="flex h-screen w-screen flex-col overflow-hidden">
@@ -92,6 +89,19 @@
 						{/if}
 					</button>
 				{/each}
+
+				<form method="POST" action="/login?/logout">
+					<button
+						type="submit"
+						title={!sidebarOpen ? 'Logout' : ''}
+						class="text-md flex w-full items-center gap-5 rounded-lg px-2.5 py-2 font-medium text-slate-300 transition-all hover:bg-white/4 hover:text-slate-300"
+					>
+						<span class="shrink-0"><LogOutIcon size={25} /></span>
+						{#if sidebarOpen}
+							<span class="truncate">Logout</span>
+						{/if}
+					</button>
+				</form>
 			</nav>
 		</aside>
 
