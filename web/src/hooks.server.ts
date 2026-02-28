@@ -11,7 +11,7 @@ export const handle: Handle = async ({ event, resolve }) => {
 		throw redirect(303, '/login');
 	}
 
-	if (pathname === '/login' && token) {
+	if (pathname === '/login' && token && event.request.method === 'GET') {
 		throw redirect(303, '/friday/dashboard');
 	}
 

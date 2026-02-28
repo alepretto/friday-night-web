@@ -4,15 +4,14 @@
 	type TagType = 'outcome' | 'income';
 
 	interface Category {
-		id: number;
+		id: string;
 		label: string;
 		type: TagType;
 	}
 
 	interface Subcategory {
-		id: number;
+		id: string;
 		label: string;
-		categoryId: number;
 	}
 
 	interface Props {
@@ -20,38 +19,26 @@
 		onclose: () => void;
 		onsave: (data: {
 			type: TagType;
-			categoryId: number | null;
+			categoryId: string;
 			newCategory: string;
-			subcategoryId: number | null;
+			subcategoryId: string;
 			newSubcategory: string;
 		}) => void;
+		categories: Category[];
+		subcategoriesMap: Record<string, Subcategory[]>;
 	}
 
-	let { open, onclose, onsave }: Props = $props();
-
-	const categories: Category[] = [
-		{ id: 1, label: 'Alimentação', type: 'outcome' },
-		{ id: 2, label: 'Transporte', type: 'outcome' },
-		{ id: 3, label: 'Salário', type: 'income' }
-	];
-
-	const subcategories: Subcategory[] = [
-		{ id: 1, label: 'Café da Manhã', categoryId: 1 },
-		{ id: 2, label: 'Gasolina', categoryId: 2 },
-		{ id: 3, label: 'Salário Mensal', categoryId: 3 }
-	];
+	let { open, onclose, onsave, categories, subcategoriesMap }: Props = $props();
 
 	let selectedType: TagType = $state('outcome');
-	let categoryId = $state<number | ''>('');
+	let categoryId = $state('');
 	let newCategory = $state('');
-	let subcategoryId = $state<number | ''>('');
+	let subcategoryId = $state('');
 	let newSubcategory = $state('');
 
-	const filteredCategories = $derived(categories.filter((c) => c.type == selectedType));
+	const filteredCategories = $derived(categories.filter((c) => c.type === selectedType));
 
-	const filteredSubcategories = $derived(
-		categoryId ? subcategories.filter((s) => s.categoryId == categoryId) : []
-	);
+	const filteredSubcategories = $derived(categoryId ? (subcategoriesMap[categoryId] ?? []) : []);
 
 	function selectType(type: TagType) {
 		selectedType = type;
@@ -74,9 +61,9 @@
 
 		onsave({
 			type: selectedType,
-			categoryId: categoryId !== '' ? Number(categoryId) : null,
+			categoryId,
 			newCategory: newCategory.trim(),
-			subcategoryId: subcategoryId !== '' ? Number(subcategoryId) : null,
+			subcategoryId,
 			newSubcategory: newSubcategory.trim()
 		});
 
