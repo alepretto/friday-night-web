@@ -131,7 +131,7 @@
 </script>
 
 {#if isLoading}
-	<div class="flex min-h-[500px] items-center justify-center py-20">
+	<div class="flex min-h-125 items-center justify-center py-20">
 		<div class="flex flex-col items-center gap-4">
 			<div
 				class="h-10 w-10 animate-spin rounded-full border-4 border-white/20 border-t-white"
