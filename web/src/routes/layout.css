@@ -9,8 +9,8 @@
 	--color-failed: #852221;
 
 	--color-friday-blue: #2f80ed;
-	--color-friday-red: #EB5757;
-	--color-friday-orange: #F2994A;
+	--color-friday-red: #eb5757;
+	--color-friday-orange: #f2994a;
 
 	--color-danger: #ff2d55;
 
@@ -20,5 +20,4 @@
 
 body {
 	background-color: #101114;
-
 }

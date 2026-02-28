@@ -26,6 +26,7 @@ This is a **SvelteKit 5** frontend app using **Svelte 5 runes** (`$state`, `$pro
 All application pages live under `src/routes/friday/`. The root `+layout.svelte` at this level renders a collapsible sidebar + header shell, with `<main>` content rendered via `{@render children()}`.
 
 Key route groups:
+
 - `/friday/accounts` — lists accounts grouped by type (bank, investment, cash, benefict)
 - `/friday/accounts/[id]/bank` — bank account detail with cards and transactions table
 - `/friday/accounts/[id]/investment` — investment account detail
@@ -41,6 +42,7 @@ Key route groups:
 **Page-local components** live in `_components/` subdirectories next to their page (e.g., `accounts/_components/AccountCard.svelte`). Modal components live directly alongside the page that uses them (e.g., `CurrencyModal.svelte` next to `currencies/+page.svelte`).
 
 **Shared UI components** in `src/lib/components/ui/`:
+
 - `Table.svelte` — generic typed table; accepts `data`, `columns: Column<T>[]`, `rowKey`, and an optional `cell` snippet for custom cell rendering
 - `Modal.svelte` — dialog shell with title, close button, Cancel/Salvar footer; body passed as a `body` snippet
 - `Tabs.svelte` — pill-style tab bar driven by route `{label, route}` pairs, highlights active tab via `page.url.pathname`
@@ -50,6 +52,7 @@ Key route groups:
 ### Types
 
 `src/lib/types/`:
+
 - `account.ts` — `Account`, `AccountType`, `CardInfo`
 - `transaction.ts` — `Transaction`
 
