@@ -7,9 +7,10 @@
 	const id = page.params.id;
 
 	const account: Account = {
-		id: 1,
+		id: '00000000-0000-0000-0000-000000000000',
 		institution: 'Santander',
-		active: true,
+		institutionId: '00000000-0000-0000-0000-000000000000',
+		status: 'activate',
 		type: 'bank',
 		logoPath: '/logo-santander 1.png'
 	};

@@ -138,6 +138,31 @@ export const actions: Actions = {
 		return { success: true };
 	},
 
+	updateTag: async ({ request, locals }) => {
+		const { token } = locals;
+		const data = await request.formData();
+
+		const tagId = data.get('tagId') as string;
+		const categoryId = data.get('categoryId') as string;
+		const subcategoryId = data.get('subcategoryId') as string;
+
+		if (!tagId || !categoryId || !subcategoryId) {
+			return fail(400, { error: 'Dados inválidos' });
+		}
+
+		const res = await apiFetch(`/finance/tags/${tagId}`, token, {
+			method: 'PATCH',
+			body: JSON.stringify({ category_id: categoryId, subcategory_id: subcategoryId })
+		});
+
+		if (!res.ok) {
+			const err = await res.json().catch(() => ({}));
+			return fail(res.status, { error: err.message ?? 'Erro ao atualizar tag' });
+		}
+
+		return { success: true };
+	},
+
 	toggleTag: async ({ request, locals }) => {
 		const { token } = locals;
 		const data = await request.formData();

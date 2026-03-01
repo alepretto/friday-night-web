@@ -8,9 +8,10 @@
 		onclose: () => void;
 		onsave: () => void;
 		body: Snippet;
+		saving?: boolean;
 	}
 
-	let { open, title, onclose, onsave, body }: Props = $props();
+	let { open, title, onclose, onsave, body, saving = false }: Props = $props();
 </script>
 
 {#if open}
@@ -49,9 +50,10 @@
 				</button>
 				<button
 					onclick={onsave}
-					class="cursor-pointer rounded-3xl border border-blue-950 bg-friday-blue/80 px-10 py-2 shadow-2xl hover:bg-blue-700"
+					disabled={saving}
+					class="cursor-pointer rounded-3xl border border-blue-950 bg-friday-blue/80 px-10 py-2 shadow-2xl hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-50"
 				>
-					Salvar
+					{saving ? 'Salvando...' : 'Salvar'}
 				</button>
 			</footer>
 		</div>

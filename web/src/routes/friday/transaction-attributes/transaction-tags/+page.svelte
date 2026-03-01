@@ -1,14 +1,16 @@
 <script lang="ts">
 	import { SlidersHorizontal, CircleCheck, CircleSlash } from 'lucide-svelte';
-	import { enhance } from '$app/forms';
 	import { goto, invalidateAll } from '$app/navigation';
 	import { deserialize } from '$app/forms';
 	import Table from '$lib/components/ui/Table.svelte';
 	import type { Column } from '$lib/components/ui/Table.svelte';
 	import TransactionTagModal from './TransactionTagModal.svelte';
+	import EditTagModal from './EditTagModal.svelte';
+	import Toast from '$lib/components/ui/Toast.svelte';
+	import ConfirmDialog from '$lib/components/ui/ConfirmDialog.svelte';
 	import type { PageData } from './$types';
 
-	let { data } = $props();
+	let { data }: { data: PageData } = $props();
 
 	// === Resolve o streamed ===
 	let resolvedData = $state<any>(null);
@@ -58,12 +60,10 @@
 	let filterSubcategory = $state('');
 	let filterType = $state('');
 
-	// Subcategories for filter dropdown
 	const filterSubcategories = $derived(
 		filterCategory && resolvedData ? (resolvedData.subcategoriesMap[filterCategory] ?? []) : []
 	);
 
-	// Client-side filtered tags
 	const filteredTags = $derived(
 		resolvedData
 			? (resolvedData.tags as Tag[]).filter((tag) => {
@@ -94,12 +94,28 @@
 		goto(`?page=${page}`);
 	}
 
-	// Modal
-	let open = $state(false);
+	// Toast
+	let toastVisible = $state(false);
+	let toastMessage = $state('');
+	let toastType = $state<'success' | 'error'>('success');
+	let toastTimer: ReturnType<typeof setTimeout>;
+
+	function showToast(message: string, type: 'success' | 'error') {
+		clearTimeout(toastTimer);
+		toastMessage = message;
+		toastType = type;
+		toastVisible = true;
+		toastTimer = setTimeout(() => {
+			toastVisible = false;
+		}, 3000);
+	}
+
+	// Create modal
+	let createOpen = $state(false);
 	let createError = $state('');
 	let saving = $state(false);
 
-	async function handleSave(saveData: {
+	async function handleCreate(saveData: {
 		type: TagType;
 		categoryId: string;
 		newCategory: string;
@@ -122,13 +138,86 @@
 		saving = false;
 
 		if (result.type === 'success') {
-			open = false;
+			createOpen = false;
+			showToast('Tag criada com sucesso!', 'success');
 			await invalidateAll();
 		} else if (result.type === 'failure') {
 			createError = (result.data?.error as string) ?? 'Erro desconhecido';
+			showToast(createError, 'error');
 		}
 	}
+
+	// Edit modal
+	let editOpen = $state(false);
+	let editSaving = $state(false);
+	let editTag = $state<Tag | null>(null);
+
+	function openEdit(tag: Tag) {
+		editTag = tag;
+		editOpen = true;
+	}
+
+	async function handleEdit(saveData: { tagId: string; categoryId: string; subcategoryId: string }) {
+		editSaving = true;
+
+		const formData = new FormData();
+		formData.set('tagId', saveData.tagId);
+		formData.set('categoryId', saveData.categoryId);
+		formData.set('subcategoryId', saveData.subcategoryId);
+
+		const res = await fetch('?/updateTag', { method: 'POST', body: formData });
+		const result = deserialize(await res.text());
+
+		editSaving = false;
+
+		if (result.type === 'success') {
+			editOpen = false;
+			showToast('Tag atualizada com sucesso!', 'success');
+			await invalidateAll();
+		} else if (result.type === 'failure') {
+			const msg = (result.data?.error as string) ?? 'Erro desconhecido';
+			showToast(msg, 'error');
+		}
+	}
+
+	// Toggle confirm
+	let confirmOpen = $state(false);
+	let confirmTag = $state<Tag | null>(null);
+	let toggling = $state(false);
+
+	function askToggle(tag: Tag) {
+		confirmTag = tag;
+		confirmOpen = true;
+	}
+
+	async function confirmToggle() {
+		if (!confirmTag) return;
+		confirmOpen = false;
+		toggling = true;
+
+		const formData = new FormData();
+		formData.set('tagId', confirmTag.id);
+		formData.set('active', String(confirmTag.active));
+
+		const res = await fetch('?/toggleTag', { method: 'POST', body: formData });
+		const result = deserialize(await res.text());
+
+		toggling = false;
+
+		if (result.type === 'success') {
+			const label = confirmTag.active ? 'desativada' : 'ativada';
+			showToast(`Tag ${label} com sucesso!`, 'success');
+			await invalidateAll();
+		} else if (result.type === 'failure') {
+			const msg = (result.data?.error as string) ?? 'Erro ao atualizar tag';
+			showToast(msg, 'error');
+		}
+
+		confirmTag = null;
+	}
 </script>
+
+<Toast message={toastMessage} type={toastType} visible={toastVisible} />
 
 {#if isLoading}
 	<div class="flex min-h-125 items-center justify-center py-20">
@@ -141,14 +230,43 @@
 	</div>
 {:else}
 	<TransactionTagModal
-		{open}
+		open={createOpen}
 		onclose={() => {
-			open = false;
+			createOpen = false;
 			createError = '';
 		}}
-		onsave={handleSave}
+		onsave={handleCreate}
+		{saving}
 		categories={resolvedData.categories}
 		subcategoriesMap={resolvedData.subcategoriesMap}
+	/>
+
+	{#if editTag}
+		<EditTagModal
+			open={editOpen}
+			saving={editSaving}
+			tagId={editTag.id}
+			initialCategoryId={editTag.category_id}
+			initialSubcategoryId={editTag.subcategory_id}
+			categories={resolvedData.categories}
+			subcategoriesMap={resolvedData.subcategoriesMap}
+			onclose={() => (editOpen = false)}
+			onsave={handleEdit}
+		/>
+	{/if}
+
+	<ConfirmDialog
+		open={confirmOpen}
+		title={confirmTag?.active ? 'Desativar tag?' : 'Ativar tag?'}
+		message={confirmTag?.active
+			? `Tem certeza que deseja desativar a tag "${confirmTag?.category} / ${confirmTag?.subcategory}"?`
+			: `Tem certeza que deseja ativar a tag "${confirmTag?.category} / ${confirmTag?.subcategory}"?`}
+		confirmLabel={confirmTag?.active ? 'Desativar' : 'Ativar'}
+		onconfirm={confirmToggle}
+		oncancel={() => {
+			confirmOpen = false;
+			confirmTag = null;
+		}}
 	/>
 
 	<section>
@@ -206,7 +324,7 @@
 					<p class="text-sm text-failed">{createError}</p>
 				{/if}
 				<button
-					onclick={() => (open = true)}
+					onclick={() => (createOpen = true)}
 					disabled={saving}
 					class="cursor-pointer rounded-3xl border border-success/60 bg-success/40 px-10 py-3 transition-colors hover:bg-success disabled:opacity-50"
 				>
@@ -233,31 +351,28 @@
 							></div>
 						{:else if key === 'actions'}
 							<div class="flex justify-center gap-2">
-								<button class="cursor-pointer text-friday-orange">
+								<button
+									onclick={() => openEdit(row as Tag)}
+									class="cursor-pointer text-friday-orange"
+									title="Editar"
+								>
 									<SlidersHorizontal size={25} />
 								</button>
 
-								<form
-									method="POST"
-									action="?/toggleTag"
-									use:enhance={() =>
-										async ({ update }) => {
-											await update();
-											await invalidateAll();
-										}}
+								<button
+									onclick={() => askToggle(row as Tag)}
+									disabled={toggling}
+									class="cursor-pointer disabled:opacity-40 {row.active
+										? 'text-friday-red'
+										: 'text-success'}"
+									title={row.active ? 'Desativar' : 'Ativar'}
 								>
-									<input type="hidden" name="tagId" value={row.id} />
-									<input type="hidden" name="active" value={String(row.active)} />
-									{#if !row.active}
-										<button type="submit" class="cursor-pointer text-success">
-											<CircleCheck size={25} />
-										</button>
+									{#if row.active}
+										<CircleSlash size={25} />
 									{:else}
-										<button type="submit" class="cursor-pointer text-friday-red">
-											<CircleSlash size={25} />
-										</button>
+										<CircleCheck size={25} />
 									{/if}
-								</form>
+								</button>
 							</div>
 						{:else if key === 'id'}
 							<span class="font-mono text-xs text-gray-400"
@@ -280,7 +395,7 @@
 							<button
 								onclick={() => goToPage(page as number)}
 								class="h-9 w-9 cursor-pointer rounded-lg text-sm font-medium transition-all duration-150
-            	{currentPage === page
+								{currentPage === page
 									? 'bg-gray-600 text-white'
 									: 'text-gray-400 hover:bg-white/10 hover:text-white'}"
 							>
