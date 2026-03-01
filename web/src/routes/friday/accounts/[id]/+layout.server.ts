@@ -7,14 +7,15 @@ export const load: LayoutServerLoad = async ({ locals, params }) => {
 	const { token } = locals;
 	if (!token) throw redirect(303, '/login');
 
-	const accountRes = await apiFetch(`/finance/accounts/${params.id}`, token);
+	const accountRes = await apiFetch(`/api/v1/finance/accounts/${params.id}`, token);
+
 	if (accountRes.status === 401) throw redirect(303, '/login');
 	if (!accountRes.ok) throw redirect(303, '/friday/accounts');
 
 	const apiAccount = await accountRes.json();
 
 	const institutionRes = await apiFetch(
-		`/finance/financial-institutions/${apiAccount.financial_institution_id}`,
+		`/api/v1/finance/financial-institutions/${apiAccount.financial_institution_id}`,
 		token
 	);
 	const institution = institutionRes.ok ? await institutionRes.json() : null;

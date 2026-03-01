@@ -19,8 +19,8 @@ interface ApiInstitution {
 
 async function loadData(token: string) {
 	const [accountsRes, institutionsRes] = await Promise.all([
-		apiFetch('/finance/accounts?size=100', token),
-		apiFetch('/finance/financial-institutions?size=100', token)
+		apiFetch('/api/v1/finance/accounts?size=100', token),
+		apiFetch('/api/v1/finance/financial-institutions?size=100', token)
 	]);
 
 	if (accountsRes.status === 401 || institutionsRes.status === 401) {
@@ -76,7 +76,7 @@ export const actions: Actions = {
 			return fail(400, { error: 'Instituição e tipo são obrigatórios' });
 		}
 
-		const res = await apiFetch('/finance/accounts', token, {
+		const res = await apiFetch('/api/v1/finance/accounts', token, {
 			method: 'POST',
 			body: JSON.stringify({
 				financial_institution_id: financialInstitutionId,
@@ -99,7 +99,7 @@ export const actions: Actions = {
 		const data = await request.formData();
 		const accountId = data.get('accountId') as string;
 
-		const res = await apiFetch(`/finance/accounts/${accountId}/archive`, token, {
+		const res = await apiFetch(`/api/v1/finance/accounts/${accountId}/archive`, token, {
 			method: 'PATCH'
 		});
 
@@ -116,7 +116,7 @@ export const actions: Actions = {
 		const data = await request.formData();
 		const accountId = data.get('accountId') as string;
 
-		const res = await apiFetch(`/finance/accounts/${accountId}/activate`, token, {
+		const res = await apiFetch(`/api/v1/finance/accounts/${accountId}/activate`, token, {
 			method: 'PATCH'
 		});
 

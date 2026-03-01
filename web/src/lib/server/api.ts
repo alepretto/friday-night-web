@@ -1,6 +1,6 @@
 import { env } from '$env/dynamic/private';
 
-export const API_BASE_URL = env.API_BASE_URL ?? 'http://localhost:8000/api/v1';
+export const API_BASE_URL = env.API_BASE_URL ?? 'http://localhost:8000';
 
 export async function apiFetch(
 	path: string,

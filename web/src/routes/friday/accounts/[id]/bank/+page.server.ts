@@ -42,16 +42,16 @@ async function loadData(
 	dateStart: string | null,
 	dateEnd: string | null
 ) {
-	let transactionsUrl = `/finance/transactions?account_id=${accountId}&page=${currentPage}&size=50`;
+	let transactionsUrl = `/api/v1/finance/transactions?account_id=${accountId}&page=${currentPage}&size=50`;
 	if (dateStart) transactionsUrl += `&date_start=${encodeURIComponent(dateStart + 'T00:00:00')}`;
 	if (dateEnd) transactionsUrl += `&date_end=${encodeURIComponent(dateEnd + 'T23:59:59')}`;
 
 	const [transactionsRes, tagsRes, pmRes, cardsRes, currenciesRes] = await Promise.all([
 		apiFetch(transactionsUrl, token),
-		apiFetch('/finance/tags?size=100', token),
-		apiFetch('/finance/payment-methods?size=100', token),
-		apiFetch(`/finance/cards?account_id=${accountId}&size=100`, token),
-		apiFetch('/finance/currencies?size=100', token)
+		apiFetch('/api/v1/finance/tags?size=100', token),
+		apiFetch('/api/v1/finance/payment-methods?size=100', token),
+		apiFetch(`/api/v1/finance/cards?account_id=${accountId}&size=100`, token),
+		apiFetch('/api/v1/finance/currencies?size=100', token)
 	]);
 
 	if (transactionsRes.status === 401) return { unauthorized: true as const };
@@ -157,7 +157,7 @@ export const actions: Actions = {
 			return fail(400, { error: 'Todos os campos são obrigatórios' });
 		}
 
-		const res = await apiFetch('/finance/cards', token, {
+		const res = await apiFetch('/api/v1/finance/cards', token, {
 			method: 'POST',
 			body: JSON.stringify({
 				account_id: params.id,
@@ -205,7 +205,7 @@ export const actions: Actions = {
 		if (description?.trim()) body.description = description.trim();
 		if (dateTransaction) body.date_transaction = dateTransaction;
 
-		const res = await apiFetch('/finance/transactions', token, {
+		const res = await apiFetch('/api/v1/finance/transactions', token, {
 			method: 'POST',
 			body: JSON.stringify(body)
 		});
@@ -225,7 +225,7 @@ export const actions: Actions = {
 
 		if (!cardId) return fail(400, { error: 'ID do cartão não informado' });
 
-		const res = await apiFetch(`/finance/cards/${cardId}`, token, { method: 'DELETE' });
+		const res = await apiFetch(`/api/v1/finance/cards/${cardId}`, token, { method: 'DELETE' });
 
 		if (!res.ok) {
 			const err = await res.json().catch(() => ({}));
