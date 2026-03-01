@@ -4,14 +4,14 @@ steps:
     args:
       - 'build'
       - '-t'
-      - 'us-central1-docker.pkg.dev/$PROJECT_ID/friday-night/web:$SHORT_SHA'
+      - 'us-central1-docker.pkg.dev/$PROJECT_ID/frontend-web/web:$SHORT_SHA'
       - '-t'
-      - 'us-central1-docker.pkg.dev/$PROJECT_ID/friday-night/web:latest'
+      - 'us-central1-docker.pkg.dev/$PROJECT_ID/frontend-web/web:latest'
       - '.'
 
   # Push image to Artifact Registry
   - name: 'gcr.io/cloud-builders/docker'
-    args: ['push', '--all-tags', 'us-central1-docker.pkg.dev/$PROJECT_ID/friday-night/web']
+    args: ['push', '--all-tags', 'us-central1-docker.pkg.dev/$PROJECT_ID/frontend-web/web']
 
   # Deploy to Cloud Run
   - name: 'gcr.io/google.com/cloudsdktool/cloud-sdk'
@@ -21,7 +21,7 @@ steps:
       - 'deploy'
       - 'friday-night-web'
       - '--image'
-      - 'us-central1-docker.pkg.dev/$PROJECT_ID/friday-night/web:$SHORT_SHA'
+      - 'us-central1-docker.pkg.dev/$PROJECT_ID/frontend-web/web:$SHORT_SHA'
       - '--region'
       - 'us-central1'
       - '--platform'
@@ -49,4 +49,4 @@ options:
   logging: CLOUD_LOGGING_ONLY
 
 images:
-  - 'us-central1-docker.pkg.dev/$PROJECT_ID/friday-night/web'
+  - 'us-central1-docker.pkg.dev/$PROJECT_ID/frontend-web/web'
