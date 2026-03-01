@@ -7,6 +7,7 @@
 	import TableTransactions from './_components/TableTransactions.svelte';
 	import CardModal from './CardModal.svelte';
 	import TransactionModal from './TransactionModal.svelte';
+	import ConfirmDialog from '$lib/components/ui/ConfirmDialog.svelte';
 	import LoadingSpinner from '$lib/components/ui/LoadingSpinner.svelte';
 	import Pagination from '$lib/components/ui/Pagination.svelte';
 	import { showToast } from '$lib/toast.svelte';
@@ -29,7 +30,8 @@
 					type: 'outcome' | 'income';
 				}[];
 				availablePaymentMethods: { id: string; label: string }[];
-				currencyId: string;
+				availableCurrencies: { id: string; symbol: string; label: string }[];
+				defaultCurrencyId: string;
 				pagination: { page: number; pages: number; total: number };
 			}>;
 		};
@@ -41,7 +43,8 @@
 	const cards = $derived<CardInfo[]>(streamed.data?.cards ?? []);
 	const availableTags = $derived(streamed.data?.availableTags ?? []);
 	const availablePaymentMethods = $derived(streamed.data?.availablePaymentMethods ?? []);
-	const currencyId = $derived(streamed.data?.currencyId ?? '');
+	const availableCurrencies = $derived(streamed.data?.availableCurrencies ?? []);
+	const defaultCurrencyId = $derived(streamed.data?.defaultCurrencyId ?? '');
 	const pagination = $derived(streamed.data?.pagination ?? { page: 1, pages: 1, total: 0 });
 
 	// Date filters (triggers server reload)
@@ -113,33 +116,78 @@
 	// Transaction modal
 	let transactionModalOpen = $state(false);
 	let savingTransaction = $state(false);
+	let editingTransaction = $state<Transaction | null>(null);
+
+	function openNewTransaction() {
+		editingTransaction = null;
+		transactionModalOpen = true;
+	}
+
+	function openEditTransaction(tx: Transaction) {
+		editingTransaction = tx;
+		transactionModalOpen = true;
+	}
 
 	async function handleSaveTransaction(txData: {
+		id?: string;
 		tagId: string;
 		paymentMethodId: string;
 		cardId: string;
+		currencyId: string;
 		value: string;
 		description: string;
 		dateTransaction: string;
 	}) {
 		savingTransaction = true;
 
-		const { success, error } = await submitAction('createTransaction', {
+		const action = txData.id ? 'updateTransaction' : 'createTransaction';
+		const { success, error } = await submitAction(action, {
+			id: txData.id ?? '',
 			tagId: txData.tagId,
 			paymentMethodId: txData.paymentMethodId,
 			cardId: txData.cardId,
 			value: txData.value,
 			description: txData.description,
 			dateTransaction: txData.dateTransaction,
-			currencyId
+			currencyId: txData.currencyId
 		});
 		savingTransaction = false;
 
 		if (success) {
 			transactionModalOpen = false;
-			showToast('Transação criada com sucesso!', 'success');
+			showToast(
+				txData.id ? 'Transação atualizada com sucesso!' : 'Transação criada com sucesso!',
+				'success'
+			);
 		} else {
-			showToast(error ?? 'Erro ao criar transação', 'error');
+			showToast(error ?? 'Erro ao salvar transação', 'error');
+		}
+	}
+
+	// Transaction deletion
+	let confirmDeleteOpen = $state(false);
+	let transactionToDelete = $state<Transaction | null>(null);
+	let deletingTransaction = $state(false);
+
+	function confirmDeleteTransaction(tx: Transaction) {
+		transactionToDelete = tx;
+		confirmDeleteOpen = true;
+	}
+
+	async function handleDeleteTransaction() {
+		if (!transactionToDelete) return;
+
+		deletingTransaction = true;
+		const { success, error } = await submitAction('deleteTransaction', {
+			transactionId: transactionToDelete.id
+		});
+		deletingTransaction = false;
+
+		if (success) {
+			confirmDeleteOpen = false;
+			showToast('Transação deletada com sucesso!', 'success');
+		} else {
+			showToast(error ?? 'Erro ao deletar transação', 'error');
 		}
 	}
 
@@ -165,11 +213,23 @@
 <TransactionModal
 	open={transactionModalOpen}
 	saving={savingTransaction}
+	transaction={editingTransaction}
 	onclose={() => (transactionModalOpen = false)}
 	onsave={handleSaveTransaction}
 	tags={availableTags}
 	paymentMethods={availablePaymentMethods}
 	cards={cards.map((c) => ({ id: c.id, label: c.label }))}
+	currencies={availableCurrencies}
+	{defaultCurrencyId}
+/>
+
+<ConfirmDialog
+	open={confirmDeleteOpen}
+	loading={deletingTransaction}
+	title="Deletar Transação"
+	message="Tem certeza que deseja deletar esta transação? Esta ação não pode ser desfeita."
+	onclose={() => (confirmDeleteOpen = false)}
+	onconfirm={handleDeleteTransaction}
 />
 
 {#if streamed.isLoading}
@@ -216,7 +276,7 @@
 			<div class="flex justify-between">
 				<h1 class="text-3xl font-bold">Transações</h1>
 				<button
-					onclick={() => (transactionModalOpen = true)}
+					onclick={openNewTransaction}
 					disabled={savingTransaction}
 					class="cursor-pointer rounded-3xl border border-friday-blue/60 bg-friday-blue/40 px-10 py-3 transition-colors hover:bg-friday-blue disabled:opacity-50"
 				>
@@ -308,7 +368,11 @@
 				<div class="py-10 text-center text-white/50">Nenhuma transação encontrada.</div>
 			{:else}
 				<div class="flex justify-center">
-					<TableTransactions transactions={filteredTransactions} />
+					<TableTransactions
+						transactions={filteredTransactions}
+						onedit={openEditTransaction}
+						ondelete={confirmDeleteTransaction}
+					/>
 				</div>
 
 				<Pagination currentPage={pagination.page} totalPages={pagination.pages} preserveParams />

@@ -7,7 +7,7 @@ export const handle: Handle = async ({ event, resolve }) => {
 
 	const { pathname } = event.url;
 
-	if (pathname.startsWith('/friday') && !token) {
+	if ((pathname.startsWith('/friday') || pathname.startsWith('/telegram/transaction')) && !token) {
 		throw redirect(303, '/login');
 	}
 
