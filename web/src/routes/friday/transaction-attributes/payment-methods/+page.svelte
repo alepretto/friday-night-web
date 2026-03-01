@@ -1,10 +1,11 @@
 <script lang="ts">
 	import { CircleCheck, CircleSlash } from 'lucide-svelte';
-	import { goto, invalidateAll } from '$app/navigation';
-	import { deserialize } from '$app/forms';
 	import PaymentMethodModal from './PaymentMethodModal.svelte';
-	import Toast from '$lib/components/ui/Toast.svelte';
 	import ConfirmDialog from '$lib/components/ui/ConfirmDialog.svelte';
+	import LoadingSpinner from '$lib/components/ui/LoadingSpinner.svelte';
+	import { showToast } from '$lib/toast.svelte';
+	import { useStreamedData } from '$lib/utils/streamed-data.svelte';
+	import { submitAction } from '$lib/utils/form-action';
 	import type { PageData } from './$types';
 
 	let { data }: { data: PageData } = $props();
@@ -15,43 +16,7 @@
 		active: boolean;
 	}
 
-	// === Resolve o streamed ===
-	let resolvedData = $state<any>(null);
-	let isLoading = $state(true);
-
-	$effect(() => {
-		isLoading = true;
-		Promise.resolve(data.streamed)
-			.then(async (result) => {
-				if ('unauthorized' in result) {
-					await fetch('/login?/logout', { method: 'POST' });
-					goto('/login');
-					return;
-				}
-				resolvedData = result;
-				isLoading = false;
-			})
-			.catch((err) => {
-				console.error('Erro ao carregar métodos de pagamento:', err);
-				isLoading = false;
-			});
-	});
-
-	// Toast
-	let toastVisible = $state(false);
-	let toastMessage = $state('');
-	let toastType = $state<'success' | 'error'>('success');
-	let toastTimer: ReturnType<typeof setTimeout>;
-
-	function showToast(message: string, type: 'success' | 'error') {
-		clearTimeout(toastTimer);
-		toastMessage = message;
-		toastType = type;
-		toastVisible = true;
-		toastTimer = setTimeout(() => {
-			toastVisible = false;
-		}, 3000);
-	}
+	const streamed = useStreamedData(() => data.streamed);
 
 	// Create modal
 	let createOpen = $state(false);
@@ -62,20 +27,14 @@
 		saving = true;
 		createError = '';
 
-		const formData = new FormData();
-		formData.set('label', label);
-
-		const res = await fetch('?/createPaymentMethod', { method: 'POST', body: formData });
-		const result = deserialize(await res.text());
-
+		const { success, error } = await submitAction('createPaymentMethod', { label });
 		saving = false;
 
-		if (result.type === 'success') {
+		if (success) {
 			createOpen = false;
 			showToast('Método de pagamento criado com sucesso!', 'success');
-			await invalidateAll();
-		} else if (result.type === 'failure') {
-			createError = (result.data?.error as string) ?? 'Erro desconhecido';
+		} else {
+			createError = error!;
 			showToast(createError, 'error');
 		}
 	}
@@ -95,29 +54,22 @@
 		confirmOpen = false;
 		toggling = true;
 
-		const formData = new FormData();
-		formData.set('methodId', confirmMethod.id);
-		formData.set('active', String(confirmMethod.active));
-
-		const res = await fetch('?/togglePaymentMethod', { method: 'POST', body: formData });
-		const result = deserialize(await res.text());
-
+		const { success, error } = await submitAction('togglePaymentMethod', {
+			methodId: confirmMethod.id,
+			active: String(confirmMethod.active)
+		});
 		toggling = false;
 
-		if (result.type === 'success') {
+		if (success) {
 			const label = confirmMethod.active ? 'desativado' : 'ativado';
 			showToast(`"${confirmMethod.label}" ${label} com sucesso!`, 'success');
-			await invalidateAll();
-		} else if (result.type === 'failure') {
-			const msg = (result.data?.error as string) ?? 'Erro ao atualizar método';
-			showToast(msg, 'error');
+		} else {
+			showToast(error ?? 'Erro ao atualizar método', 'error');
 		}
 
 		confirmMethod = null;
 	}
 </script>
-
-<Toast message={toastMessage} type={toastType} visible={toastVisible} />
 
 <ConfirmDialog
 	open={confirmOpen}
@@ -133,15 +85,8 @@
 	}}
 />
 
-{#if isLoading}
-	<div class="flex min-h-125 items-center justify-center py-20">
-		<div class="flex flex-col items-center gap-4">
-			<div
-				class="h-10 w-10 animate-spin rounded-full border-4 border-white/20 border-t-white"
-			></div>
-			<p class="text-sm text-gray-400">Carregando métodos de pagamento...</p>
-		</div>
-	</div>
+{#if streamed.isLoading}
+	<LoadingSpinner message="Carregando métodos de pagamento..." />
 {:else}
 	<PaymentMethodModal
 		open={createOpen}
@@ -170,7 +115,7 @@
 		</div>
 
 		<div class="grid grid-cols-4 gap-10 px-10">
-			{#each resolvedData.methods as method (method.id)}
+			{#each streamed.data!.methods as method (method.id)}
 				<div
 					class="flex h-25 items-center justify-around rounded-2xl border-2 bg-secondary/30 px-2 shadow-2xl {method.active
 						? 'border-success/30'

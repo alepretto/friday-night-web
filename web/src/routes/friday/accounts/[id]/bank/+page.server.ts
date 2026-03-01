@@ -15,6 +15,7 @@ interface ApiTransaction {
 
 interface ApiTag {
 	id: string;
+	active: boolean;
 	category: { id: string; label: string; type: 'outcome' | 'income' };
 	subcategory: { id: string; label: string };
 }
@@ -22,6 +23,7 @@ interface ApiTag {
 interface ApiPaymentMethod {
 	id: string;
 	label: string;
+	active: boolean;
 }
 
 interface ApiCard {
@@ -44,11 +46,12 @@ async function loadData(
 	if (dateStart) transactionsUrl += `&date_start=${encodeURIComponent(dateStart + 'T00:00:00')}`;
 	if (dateEnd) transactionsUrl += `&date_end=${encodeURIComponent(dateEnd + 'T23:59:59')}`;
 
-	const [transactionsRes, tagsRes, pmRes, cardsRes] = await Promise.all([
+	const [transactionsRes, tagsRes, pmRes, cardsRes, currenciesRes] = await Promise.all([
 		apiFetch(transactionsUrl, token),
-		apiFetch('/finance/tags?size=200', token),
-		apiFetch('/finance/payment-methods?size=200', token),
-		apiFetch(`/finance/cards?account_id=${accountId}&size=100`, token)
+		apiFetch('/finance/tags?size=100', token),
+		apiFetch('/finance/payment-methods?size=100', token),
+		apiFetch(`/finance/cards?account_id=${accountId}&size=100`, token),
+		apiFetch('/finance/currencies?size=100', token)
 	]);
 
 	if (transactionsRes.status === 401) return { unauthorized: true as const };
@@ -57,6 +60,7 @@ async function loadData(
 	const tagsData = tagsRes.ok ? await tagsRes.json() : { items: [] };
 	const pmData = pmRes.ok ? await pmRes.json() : { items: [] };
 	const cardsData = cardsRes.ok ? await cardsRes.json() : { items: [] };
+	const currenciesData = currenciesRes.ok ? await currenciesRes.json() : { items: [] };
 
 	const tagsMap = new Map<string, ApiTag>();
 	for (const tag of tagsData.items ?? []) tagsMap.set(tag.id, tag);
@@ -64,22 +68,20 @@ async function loadData(
 	const pmMap = new Map<string, ApiPaymentMethod>();
 	for (const pm of pmData.items ?? []) pmMap.set(pm.id, pm);
 
-	const transactions: Transaction[] = (transactionsData.items ?? []).map(
-		(t: ApiTransaction) => {
-			const tag = tagsMap.get(t.tag_id);
-			const pm = pmMap.get(t.payment_method_id);
-			return {
-				id: t.id,
-				dateTransaction: t.date_transaction,
-				category: tag?.category.label ?? 'Desconhecida',
-				subcategory: tag?.subcategory.label ?? '-',
-				paymentMethod: pm?.label ?? '-',
-				type: tag?.category.type ?? 'outcome',
-				value: parseFloat(t.value),
-				description: t.description
-			};
-		}
-	);
+	const transactions: Transaction[] = (transactionsData.items ?? []).map((t: ApiTransaction) => {
+		const tag = tagsMap.get(t.tag_id);
+		const pm = pmMap.get(t.payment_method_id);
+		return {
+			id: t.id,
+			dateTransaction: t.date_transaction,
+			category: tag?.category.label ?? 'Desconhecida',
+			subcategory: tag?.subcategory.label ?? '-',
+			paymentMethod: pm?.label ?? '-',
+			type: tag?.category.type ?? 'outcome',
+			value: parseFloat(t.value),
+			description: t.description
+		};
+	});
 
 	const cards: CardInfo[] = (cardsData.items ?? []).map((c: ApiCard) => ({
 		id: c.id,
@@ -90,9 +92,35 @@ async function loadData(
 		limit: parseFloat(c.limit)
 	}));
 
+	const activeTags = (tagsData.items ?? []).filter((tag: ApiTag) => tag.active);
+
+	const availableTags = activeTags.map((tag: ApiTag) => ({
+		id: tag.id,
+		categoryId: tag.category.id,
+		subcategoryId: tag.subcategory.id,
+		categoryLabel: tag.category.label,
+		subcategoryLabel: tag.subcategory.label,
+		type: tag.category.type as 'outcome' | 'income'
+	}));
+
+	const availablePaymentMethods = (pmData.items ?? [])
+		.filter((pm: ApiPaymentMethod) => pm.active)
+		.map((pm: ApiPaymentMethod) => ({
+			id: pm.id,
+			label: pm.label
+		}));
+
+	const brlCurrency = (currenciesData.items ?? []).find(
+		(c: { id: string; symbol: string }) => c.symbol === 'BRL'
+	);
+	const currencyId: string = brlCurrency?.id ?? '';
+
 	return {
 		transactions,
 		cards,
+		availableTags,
+		availablePaymentMethods,
+		currencyId,
 		pagination: {
 			page: (transactionsData.page as number) ?? 1,
 			pages: (transactionsData.pages as number) ?? 1,
@@ -131,12 +159,60 @@ export const actions: Actions = {
 
 		const res = await apiFetch('/finance/cards', token, {
 			method: 'POST',
-			body: JSON.stringify({ account_id: params.id, label: label.trim(), flag, close_day, due_day, limit })
+			body: JSON.stringify({
+				account_id: params.id,
+				label: label.trim(),
+				flag,
+				close_day,
+				due_day,
+				limit
+			})
 		});
 
 		if (!res.ok) {
 			const err = await res.json().catch(() => ({}));
 			return fail(res.status, { error: err.message ?? 'Erro ao criar cartão' });
+		}
+
+		return { success: true };
+	},
+
+	createTransaction: async ({ request, locals, params }) => {
+		const { token } = locals;
+		const data = await request.formData();
+
+		const tagId = data.get('tagId') as string;
+		const paymentMethodId = data.get('paymentMethodId') as string;
+		const cardId = data.get('cardId') as string;
+		const value = data.get('value') as string;
+		const description = data.get('description') as string;
+		const dateTransaction = data.get('dateTransaction') as string;
+		const currencyId = data.get('currencyId') as string;
+
+		if (!tagId || !paymentMethodId || !value) {
+			return fail(400, { error: 'Campos obrigatórios não preenchidos' });
+		}
+
+		const body: Record<string, string> = {
+			account_id: params.id,
+			tag_id: tagId,
+			payment_method_id: paymentMethodId,
+			currency_id: currencyId,
+			value
+		};
+
+		if (cardId) body.card_id = cardId;
+		if (description?.trim()) body.description = description.trim();
+		if (dateTransaction) body.date_transaction = dateTransaction;
+
+		const res = await apiFetch('/finance/transactions', token, {
+			method: 'POST',
+			body: JSON.stringify(body)
+		});
+
+		if (!res.ok) {
+			const err = await res.json().catch(() => ({}));
+			return fail(res.status, { error: err.message ?? 'Erro ao criar transação' });
 		}
 
 		return { success: true };
