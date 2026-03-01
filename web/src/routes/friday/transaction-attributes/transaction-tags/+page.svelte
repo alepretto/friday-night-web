@@ -1,38 +1,18 @@
 <script lang="ts">
 	import { SlidersHorizontal, CircleCheck, CircleSlash } from 'lucide-svelte';
-	import { goto, invalidateAll } from '$app/navigation';
-	import { deserialize } from '$app/forms';
 	import Table from '$lib/components/ui/Table.svelte';
 	import type { Column } from '$lib/components/ui/Table.svelte';
 	import TransactionTagModal from './TransactionTagModal.svelte';
 	import EditTagModal from './EditTagModal.svelte';
-	import Toast from '$lib/components/ui/Toast.svelte';
 	import ConfirmDialog from '$lib/components/ui/ConfirmDialog.svelte';
+	import LoadingSpinner from '$lib/components/ui/LoadingSpinner.svelte';
+	import Pagination from '$lib/components/ui/Pagination.svelte';
+	import { showToast } from '$lib/toast.svelte';
+	import { useStreamedData } from '$lib/utils/streamed-data.svelte';
+	import { submitAction } from '$lib/utils/form-action';
 	import type { PageData } from './$types';
 
 	let { data }: { data: PageData } = $props();
-
-	// === Resolve o streamed ===
-	let resolvedData = $state<any>(null);
-	let isLoading = $state(true);
-
-	$effect(() => {
-		isLoading = true;
-		Promise.resolve(data.streamed)
-			.then(async (result) => {
-				if ('unauthorized' in result) {
-					await fetch('/login?/logout', { method: 'POST' });
-					goto('/login');
-					return;
-				}
-				resolvedData = result;
-				isLoading = false;
-			})
-			.catch((err) => {
-				console.error('Erro ao carregar tags:', err);
-				isLoading = false;
-			});
-	});
 
 	type TagType = 'outcome' | 'income';
 
@@ -45,6 +25,8 @@
 		category_id: string;
 		subcategory_id: string;
 	}
+
+	const streamed = useStreamedData(() => data.streamed);
 
 	const columns: Column<Tag>[] = [
 		{ key: 'id', label: 'ID' },
@@ -66,12 +48,12 @@
 	let filterType = $state('');
 
 	const filterSubcategories = $derived(
-		filterCategory && resolvedData ? (resolvedData.subcategoriesMap[filterCategory] ?? []) : []
+		filterCategory && streamed.data ? (streamed.data!.subcategoriesMap![filterCategory] ?? []) : []
 	);
 
 	const filteredTags = $derived(
-		resolvedData
-			? (resolvedData.tags as Tag[]).filter((tag) => {
+		streamed.data
+			? (streamed.data.tags as Tag[]).filter((tag) => {
 					if (filterCategory && tag.category_id !== filterCategory) return false;
 					if (filterSubcategory && tag.subcategory_id !== filterSubcategory) return false;
 					if (filterType && tag.type !== filterType) return false;
@@ -81,39 +63,8 @@
 	);
 
 	// Pagination
-	const currentPage = $derived(resolvedData?.pagination.page ?? 1);
-
-	function getVisiblePages(current: number, total: number) {
-		if (total <= 5) return Array.from({ length: total }, (_, i) => i + 1);
-		const pages: (number | '...')[] = [1, 2, 3];
-		if (current > 4) pages.push('...');
-		if (current > 3 && current < total - 1) pages.push(current);
-		pages.push('...');
-		pages.push(total - 1, total);
-		return [...new Set(pages)];
-	}
-
-	const visiblePages = $derived(getVisiblePages(currentPage, resolvedData?.pagination.pages ?? 1));
-
-	function goToPage(page: number) {
-		goto(`?page=${page}`);
-	}
-
-	// Toast
-	let toastVisible = $state(false);
-	let toastMessage = $state('');
-	let toastType = $state<'success' | 'error'>('success');
-	let toastTimer: ReturnType<typeof setTimeout>;
-
-	function showToast(message: string, type: 'success' | 'error') {
-		clearTimeout(toastTimer);
-		toastMessage = message;
-		toastType = type;
-		toastVisible = true;
-		toastTimer = setTimeout(() => {
-			toastVisible = false;
-		}, 3000);
-	}
+	const currentPage = $derived(streamed.data?.pagination?.page ?? 1);
+	const totalPages = $derived(streamed.data?.pagination?.pages ?? 1);
 
 	// Create modal
 	let createOpen = $state(false);
@@ -130,24 +81,20 @@
 		saving = true;
 		createError = '';
 
-		const formData = new FormData();
-		formData.set('type', saveData.type);
-		formData.set('categoryId', saveData.categoryId);
-		formData.set('newCategory', saveData.newCategory);
-		formData.set('subcategoryId', saveData.subcategoryId);
-		formData.set('newSubcategory', saveData.newSubcategory);
-
-		const res = await fetch('?/createTag', { method: 'POST', body: formData });
-		const result = deserialize(await res.text());
-
+		const { success, error } = await submitAction('createTag', {
+			type: saveData.type,
+			categoryId: saveData.categoryId,
+			newCategory: saveData.newCategory,
+			subcategoryId: saveData.subcategoryId,
+			newSubcategory: saveData.newSubcategory
+		});
 		saving = false;
 
-		if (result.type === 'success') {
+		if (success) {
 			createOpen = false;
 			showToast('Tag criada com sucesso!', 'success');
-			await invalidateAll();
-		} else if (result.type === 'failure') {
-			createError = (result.data?.error as string) ?? 'Erro desconhecido';
+		} else {
+			createError = error!;
 			showToast(createError, 'error');
 		}
 	}
@@ -162,26 +109,25 @@
 		editOpen = true;
 	}
 
-	async function handleEdit(saveData: { tagId: string; categoryId: string; subcategoryId: string }) {
+	async function handleEdit(saveData: {
+		tagId: string;
+		categoryId: string;
+		subcategoryId: string;
+	}) {
 		editSaving = true;
 
-		const formData = new FormData();
-		formData.set('tagId', saveData.tagId);
-		formData.set('categoryId', saveData.categoryId);
-		formData.set('subcategoryId', saveData.subcategoryId);
-
-		const res = await fetch('?/updateTag', { method: 'POST', body: formData });
-		const result = deserialize(await res.text());
-
+		const { success, error } = await submitAction('updateTag', {
+			tagId: saveData.tagId,
+			categoryId: saveData.categoryId,
+			subcategoryId: saveData.subcategoryId
+		});
 		editSaving = false;
 
-		if (result.type === 'success') {
+		if (success) {
 			editOpen = false;
 			showToast('Tag atualizada com sucesso!', 'success');
-			await invalidateAll();
-		} else if (result.type === 'failure') {
-			const msg = (result.data?.error as string) ?? 'Erro desconhecido';
-			showToast(msg, 'error');
+		} else {
+			showToast(error ?? 'Erro desconhecido', 'error');
 		}
 	}
 
@@ -200,39 +146,25 @@
 		confirmOpen = false;
 		toggling = true;
 
-		const formData = new FormData();
-		formData.set('tagId', confirmTag.id);
-		formData.set('active', String(confirmTag.active));
-
-		const res = await fetch('?/toggleTag', { method: 'POST', body: formData });
-		const result = deserialize(await res.text());
-
+		const { success, error } = await submitAction('toggleTag', {
+			tagId: confirmTag.id,
+			active: String(confirmTag.active)
+		});
 		toggling = false;
 
-		if (result.type === 'success') {
+		if (success) {
 			const label = confirmTag.active ? 'desativada' : 'ativada';
 			showToast(`Tag ${label} com sucesso!`, 'success');
-			await invalidateAll();
-		} else if (result.type === 'failure') {
-			const msg = (result.data?.error as string) ?? 'Erro ao atualizar tag';
-			showToast(msg, 'error');
+		} else {
+			showToast(error ?? 'Erro ao atualizar tag', 'error');
 		}
 
 		confirmTag = null;
 	}
 </script>
 
-<Toast message={toastMessage} type={toastType} visible={toastVisible} />
-
-{#if isLoading}
-	<div class="flex min-h-125 items-center justify-center py-20">
-		<div class="flex flex-col items-center gap-4">
-			<div
-				class="h-10 w-10 animate-spin rounded-full border-4 border-white/20 border-t-white"
-			></div>
-			<p class="text-sm text-gray-400">Carregando tags de transação...</p>
-		</div>
-	</div>
+{#if streamed.isLoading}
+	<LoadingSpinner message="Carregando tags de transação..." />
 {:else}
 	<TransactionTagModal
 		open={createOpen}
@@ -242,8 +174,8 @@
 		}}
 		onsave={handleCreate}
 		{saving}
-		categories={resolvedData.categories}
-		subcategoriesMap={resolvedData.subcategoriesMap}
+		categories={streamed.data!.categories!}
+		subcategoriesMap={streamed.data!.subcategoriesMap!}
 	/>
 
 	{#if editTag}
@@ -253,8 +185,8 @@
 			tagId={editTag.id}
 			initialCategoryId={editTag.category_id}
 			initialSubcategoryId={editTag.subcategory_id}
-			categories={resolvedData.categories}
-			subcategoriesMap={resolvedData.subcategoriesMap}
+			categories={streamed.data!.categories!}
+			subcategoriesMap={streamed.data!.subcategoriesMap!}
 			onclose={() => (editOpen = false)}
 			onsave={handleEdit}
 		/>
@@ -287,7 +219,7 @@
 						class="w-full rounded-xl bg-secondary/30 px-4 py-2 text-sm outline-none focus:ring-2 focus:ring-white/20"
 					>
 						<option value="">Todos</option>
-						{#each resolvedData.categories as cat (cat.id)}
+						{#each streamed.data!.categories! as cat (cat.id)}
 							<option value={cat.id}>{cat.label}</option>
 						{/each}
 					</select>
@@ -390,26 +322,7 @@
 				</Table>
 			</div>
 
-			<!-- Pagination -->
-			{#if resolvedData.pagination.pages > 1}
-				<div class="mt-8 flex items-center gap-1">
-					{#each visiblePages as page (page)}
-						{#if page === '...'}
-							<span class="px-2 text-sm text-gray-500 select-none">...</span>
-						{:else}
-							<button
-								onclick={() => goToPage(page as number)}
-								class="h-9 w-9 cursor-pointer rounded-lg text-sm font-medium transition-all duration-150
-								{currentPage === page
-									? 'bg-gray-600 text-white'
-									: 'text-gray-400 hover:bg-white/10 hover:text-white'}"
-							>
-								{page}
-							</button>
-						{/if}
-					{/each}
-				</div>
-			{/if}
+			<Pagination {currentPage} {totalPages} />
 		</div>
 	</section>
 {/if}

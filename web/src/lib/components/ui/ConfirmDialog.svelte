@@ -8,14 +8,7 @@
 		oncancel: () => void;
 	}
 
-	let {
-		open,
-		title,
-		message,
-		confirmLabel = 'Confirmar',
-		onconfirm,
-		oncancel
-	}: Props = $props();
+	let { open, title, message, confirmLabel = 'Confirmar', onconfirm, oncancel }: Props = $props();
 </script>
 
 {#if open}

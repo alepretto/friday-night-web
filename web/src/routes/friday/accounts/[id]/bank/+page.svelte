@@ -1,12 +1,16 @@
 <script lang="ts">
 	import { ReceiptIcon } from 'lucide-svelte';
-	import { deserialize } from '$app/forms';
-	import { goto, invalidateAll } from '$app/navigation';
+	import { goto } from '$app/navigation';
 	import { page } from '$app/state';
+	import { SvelteURLSearchParams } from 'svelte/reactivity';
 	import CardsTable from './_components/CardsTable.svelte';
 	import TableTransactions from './_components/TableTransactions.svelte';
 	import CardModal from './CardModal.svelte';
-	import Toast from '$lib/components/ui/Toast.svelte';
+	import LoadingSpinner from '$lib/components/ui/LoadingSpinner.svelte';
+	import Pagination from '$lib/components/ui/Pagination.svelte';
+	import { showToast } from '$lib/toast.svelte';
+	import { useStreamedData } from '$lib/utils/streamed-data.svelte';
+	import { submitAction } from '$lib/utils/form-action';
 	import type { CardInfo } from '$lib/types/account';
 	import type { Transaction } from '$lib/types/transaction';
 
@@ -22,61 +26,28 @@
 
 	let { data }: Props = $props();
 
-	let isLoading = $state(true);
-	let transactions = $state<Transaction[]>([]);
-	let cards = $state<CardInfo[]>([]);
-	let pagination = $state({ page: 1, pages: 1, total: 0 });
-
-	$effect(() => {
-		isLoading = true;
-		data.streamed.then(async (result) => {
-			if ('unauthorized' in result) {
-				await fetch('/login?/logout', { method: 'POST' });
-				goto('/login');
-				return;
-			}
-			transactions = result.transactions;
-			cards = result.cards;
-			pagination = result.pagination;
-			isLoading = false;
-		});
-	});
-
-	// Toast
-	let toastVisible = $state(false);
-	let toastMessage = $state('');
-	let toastType = $state<'success' | 'error'>('success');
-	let toastTimer: ReturnType<typeof setTimeout>;
-
-	function showToast(message: string, type: 'success' | 'error') {
-		clearTimeout(toastTimer);
-		toastMessage = message;
-		toastType = type;
-		toastVisible = true;
-		toastTimer = setTimeout(() => (toastVisible = false), 3000);
-	}
+	const streamed = useStreamedData(() => data.streamed);
+	const transactions = $derived<Transaction[]>(streamed.data?.transactions ?? []);
+	const cards = $derived<CardInfo[]>(streamed.data?.cards ?? []);
+	const pagination = $derived(streamed.data?.pagination ?? { page: 1, pages: 1, total: 0 });
 
 	// Date filters (triggers server reload)
 	let dateStart = $state(page.url.searchParams.get('date_start') ?? '');
 	let dateEnd = $state(page.url.searchParams.get('date_end') ?? '');
 
 	function applyDateFilters() {
-		const params = new URLSearchParams();
+		const params = new SvelteURLSearchParams();
 		if (dateStart) params.set('date_start', dateStart);
 		if (dateEnd) params.set('date_end', dateEnd);
+		// eslint-disable-next-line svelte/no-navigation-without-resolve -- query-only navigation
 		goto(`?${params.toString()}`);
 	}
 
 	function clearFilters() {
 		dateStart = '';
 		dateEnd = '';
+		// eslint-disable-next-line svelte/no-navigation-without-resolve -- query-only navigation
 		goto('?');
-	}
-
-	function goToPage(p: number) {
-		const params = new URLSearchParams(page.url.searchParams);
-		params.set('page', String(p));
-		goto(`?${params.toString()}`);
 	}
 
 	// Client-side filters
@@ -109,51 +80,34 @@
 	}) {
 		savingCard = true;
 
-		const formData = new FormData();
-		formData.set('label', cardData.label);
-		formData.set('flag', cardData.flag);
-		formData.set('close_day', String(cardData.close_day));
-		formData.set('due_day', String(cardData.due_day));
-		formData.set('limit', String(cardData.limit));
-
-		const res = await fetch('?/createCard', { method: 'POST', body: formData });
-		const result = deserialize(await res.text());
-
+		const { success, error } = await submitAction('createCard', {
+			label: cardData.label,
+			flag: cardData.flag,
+			close_day: String(cardData.close_day),
+			due_day: String(cardData.due_day),
+			limit: String(cardData.limit)
+		});
 		savingCard = false;
 
-		if (result.type === 'success') {
+		if (success) {
 			cardModalOpen = false;
 			showToast('Cartão criado com sucesso!', 'success');
-			await invalidateAll();
-		} else if (result.type === 'failure') {
-			showToast((result.data?.error as string) ?? 'Erro ao criar cartão', 'error');
+		} else {
+			showToast(error ?? 'Erro ao criar cartão', 'error');
 		}
 	}
 
 	// Delete card
-	let deletingCardId = $state<string | null>(null);
-
 	async function handleDeleteCard(cardId: string) {
-		deletingCardId = cardId;
+		const { success, error } = await submitAction('deleteCard', { cardId });
 
-		const formData = new FormData();
-		formData.set('cardId', cardId);
-
-		const res = await fetch('?/deleteCard', { method: 'POST', body: formData });
-		const result = deserialize(await res.text());
-
-		deletingCardId = null;
-
-		if (result.type === 'success') {
+		if (success) {
 			showToast('Cartão deletado com sucesso!', 'success');
-			await invalidateAll();
-		} else if (result.type === 'failure') {
-			showToast((result.data?.error as string) ?? 'Erro ao deletar cartão', 'error');
+		} else {
+			showToast(error ?? 'Erro ao deletar cartão', 'error');
 		}
 	}
 </script>
-
-<Toast message={toastMessage} type={toastType} visible={toastVisible} />
 
 <CardModal
 	open={cardModalOpen}
@@ -162,13 +116,8 @@
 	onsave={handleSaveCard}
 />
 
-{#if isLoading}
-	<div class="flex min-h-125 items-center justify-center">
-		<div class="flex flex-col items-center gap-4">
-			<div class="h-10 w-10 animate-spin rounded-full border-4 border-white/20 border-t-white"></div>
-			<p class="text-sm text-gray-400">Carregando conta...</p>
-		</div>
-	</div>
+{#if streamed.isLoading}
+	<LoadingSpinner message="Carregando conta..." />
 {:else}
 	<main class="flex flex-col gap-5 text-white">
 		<div class="grid grid-cols-9 gap-15 pt-5">
@@ -302,27 +251,7 @@
 					<TableTransactions transactions={filteredTransactions} />
 				</div>
 
-				{#if pagination.pages > 1}
-					<div class="flex items-center justify-center gap-4 pb-5">
-						<button
-							onclick={() => goToPage(pagination.page - 1)}
-							disabled={pagination.page <= 1}
-							class="cursor-pointer rounded-xl border border-white/20 bg-white/10 px-5 py-2 text-sm transition-colors hover:bg-white/20 disabled:cursor-not-allowed disabled:opacity-40"
-						>
-							Anterior
-						</button>
-						<span class="text-sm text-gray-400">
-							{pagination.page} / {pagination.pages}
-						</span>
-						<button
-							onclick={() => goToPage(pagination.page + 1)}
-							disabled={pagination.page >= pagination.pages}
-							class="cursor-pointer rounded-xl border border-white/20 bg-white/10 px-5 py-2 text-sm transition-colors hover:bg-white/20 disabled:cursor-not-allowed disabled:opacity-40"
-						>
-							Próximo
-						</button>
-					</div>
-				{/if}
+				<Pagination currentPage={pagination.page} totalPages={pagination.pages} preserveParams />
 			{/if}
 		</div>
 	</main>

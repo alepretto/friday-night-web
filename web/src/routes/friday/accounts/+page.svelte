@@ -1,54 +1,18 @@
 <script lang="ts">
-	import { goto, invalidateAll } from '$app/navigation';
-	import { deserialize } from '$app/forms';
 	import AccountCard from './_components/AccountCard.svelte';
 	import AccountModal from './_components/AccountModal.svelte';
-	import Toast from '$lib/components/ui/Toast.svelte';
 	import ConfirmDialog from '$lib/components/ui/ConfirmDialog.svelte';
+	import LoadingSpinner from '$lib/components/ui/LoadingSpinner.svelte';
+	import { showToast } from '$lib/toast.svelte';
+	import { useStreamedData } from '$lib/utils/streamed-data.svelte';
+	import { submitAction } from '$lib/utils/form-action';
 	import type { Account } from '$lib/types/account';
 	import type { PageData } from './$types';
 
 	let { data }: { data: PageData } = $props();
 
-	// === Resolve o streamed ===
-	let resolvedData = $state<any>(null);
-	let isLoading = $state(true);
-
-	$effect(() => {
-		isLoading = true;
-		Promise.resolve(data.streamed)
-			.then(async (result) => {
-				if ('unauthorized' in result) {
-					await fetch('/login?/logout', { method: 'POST' });
-					goto('/login');
-					return;
-				}
-				resolvedData = result;
-				isLoading = false;
-			})
-			.catch((err) => {
-				console.error('Erro ao carregar contas:', err);
-				isLoading = false;
-			});
-	});
-
-	const accounts = $derived<Account[]>(resolvedData?.accounts ?? []);
-
-	// Toast
-	let toastVisible = $state(false);
-	let toastMessage = $state('');
-	let toastType = $state<'success' | 'error'>('success');
-	let toastTimer: ReturnType<typeof setTimeout>;
-
-	function showToast(message: string, type: 'success' | 'error') {
-		clearTimeout(toastTimer);
-		toastMessage = message;
-		toastType = type;
-		toastVisible = true;
-		toastTimer = setTimeout(() => {
-			toastVisible = false;
-		}, 3000);
-	}
+	const streamed = useStreamedData(() => data.streamed);
+	const accounts = $derived<Account[]>(streamed.data?.accounts ?? []);
 
 	// Create modal
 	let createOpen = $state(false);
@@ -63,22 +27,18 @@
 		creating = true;
 		createError = '';
 
-		const formData = new FormData();
-		formData.set('financialInstitutionId', saveData.financialInstitutionId);
-		formData.set('type', saveData.type);
-		formData.set('subtype', saveData.subtype);
-
-		const res = await fetch('?/createAccount', { method: 'POST', body: formData });
-		const result = deserialize(await res.text());
-
+		const { success, error } = await submitAction('createAccount', {
+			financialInstitutionId: saveData.financialInstitutionId,
+			type: saveData.type,
+			subtype: saveData.subtype
+		});
 		creating = false;
 
-		if (result.type === 'success') {
+		if (success) {
 			createOpen = false;
 			showToast('Conta criada com sucesso!', 'success');
-			await invalidateAll();
-		} else if (result.type === 'failure') {
-			createError = (result.data?.error as string) ?? 'Erro desconhecido';
+		} else {
+			createError = error!;
 			showToast(createError, 'error');
 		}
 	}
@@ -86,7 +46,6 @@
 	// Archive/Activate confirm
 	let confirmOpen = $state(false);
 	let confirmAccount = $state<Account | null>(null);
-	let toggling = $state(false);
 
 	function askToggle(account: Account) {
 		confirmAccount = account;
@@ -96,45 +55,38 @@
 	async function confirmToggle() {
 		if (!confirmAccount) return;
 		confirmOpen = false;
-		toggling = true;
 
 		const isActive = confirmAccount.status === 'activate';
-		const action = isActive ? '?/archiveAccount' : '?/activateAccount';
+		const actionName = isActive ? 'archiveAccount' : 'activateAccount';
 
-		const formData = new FormData();
-		formData.set('accountId', confirmAccount.id);
+		const { success, error } = await submitAction(actionName, {
+			accountId: confirmAccount.id
+		});
 
-		const res = await fetch(action, { method: 'POST', body: formData });
-		const result = deserialize(await res.text());
-
-		toggling = false;
-
-		if (result.type === 'success') {
+		if (success) {
 			const msg = isActive
 				? `Conta "${confirmAccount.institution}" arquivada`
 				: `Conta "${confirmAccount.institution}" ativada`;
 			showToast(msg, 'success');
-			await invalidateAll();
-		} else if (result.type === 'failure') {
-			showToast((result.data?.error as string) ?? 'Erro ao atualizar conta', 'error');
+		} else {
+			showToast(error ?? 'Erro ao atualizar conta', 'error');
 		}
 
 		confirmAccount = null;
 	}
 
-	// Edit (stub — just show toast for now since subtype edit needs more design)
+	// Edit (stub)
+	// eslint-disable-next-line @typescript-eslint/no-unused-vars
 	function handleEdit(account: Account) {
 		showToast('Edição de conta em breve!', 'success');
 	}
 </script>
 
-<Toast message={toastMessage} type={toastType} visible={toastVisible} />
-
-{#if !isLoading && resolvedData}
+{#if !streamed.isLoading && streamed.data}
 	<AccountModal
 		open={createOpen}
 		saving={creating}
-		institutions={resolvedData.institutions}
+		institutions={streamed.data.institutions}
 		onclose={() => {
 			createOpen = false;
 			createError = '';
@@ -163,15 +115,8 @@
 		<p>Gerencie as contas que você possui.</p>
 	</header>
 
-	{#if isLoading}
-		<div class="flex min-h-96 items-center justify-center py-20">
-			<div class="flex flex-col items-center gap-4">
-				<div
-					class="h-10 w-10 animate-spin rounded-full border-4 border-white/20 border-t-white"
-				></div>
-				<p class="text-sm text-gray-400">Carregando contas...</p>
-			</div>
-		</div>
+	{#if streamed.isLoading}
+		<LoadingSpinner message="Carregando contas..." minHeight="min-h-96" />
 	{:else}
 		<section class="text-white">
 			<div class="flex items-center justify-end p-10">
@@ -190,12 +135,7 @@
 			</div>
 
 			<div class="flex flex-col gap-4">
-				{#each [
-					{ key: 'bank', label: 'Bank' },
-					{ key: 'investment', label: 'Investimentos' },
-					{ key: 'cash', label: 'Cash' },
-					{ key: 'benefit', label: 'Benefícios' }
-				] as group (group.key)}
+				{#each [{ key: 'bank', label: 'Bank' }, { key: 'investment', label: 'Investimentos' }, { key: 'cash', label: 'Cash' }, { key: 'benefit', label: 'Benefícios' }] as group (group.key)}
 					{@const groupAccounts = accounts.filter((a) => a.type === group.key)}
 					{#if groupAccounts.length}
 						<div>
@@ -204,11 +144,7 @@
 							</div>
 							<div class="grid grid-cols-3 gap-4">
 								{#each groupAccounts as account (account.id)}
-									<AccountCard
-										{account}
-										onedit={handleEdit}
-										onarchive={askToggle}
-									/>
+									<AccountCard {account} onedit={handleEdit} onarchive={askToggle} />
 								{/each}
 							</div>
 						</div>

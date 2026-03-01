@@ -12,11 +12,7 @@
 		saving?: boolean;
 		institutions: Institution[];
 		onclose: () => void;
-		onsave: (data: {
-			financialInstitutionId: string;
-			type: AccountType;
-			subtype: string;
-		}) => void;
+		onsave: (data: { financialInstitutionId: string; type: AccountType; subtype: string }) => void;
 	}
 
 	let { open, saving = false, institutions, onclose, onsave }: Props = $props();

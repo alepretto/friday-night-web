@@ -5,7 +5,13 @@
 		open: boolean;
 		saving?: boolean;
 		onclose: () => void;
-		onsave: (data: { label: string; flag: string; close_day: number; due_day: number; limit: number }) => void;
+		onsave: (data: {
+			label: string;
+			flag: string;
+			close_day: number;
+			due_day: number;
+			limit: number;
+		}) => void;
 	}
 
 	let { open, saving = false, onclose, onsave }: Props = $props();
@@ -40,7 +46,7 @@
 	}
 </script>
 
-<Modal title="Novo Cartão" {open} {saving} onclose={onclose} onsave={handleSave}>
+<Modal title="Novo Cartão" {open} {saving} {onclose} onsave={handleSave}>
 	{#snippet body()}
 		<div class="flex flex-col gap-4">
 			<div class="flex flex-col gap-1">

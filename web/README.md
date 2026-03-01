@@ -68,13 +68,13 @@ friday/
 
 `src/lib/components/ui/`:
 
-| Componente       | Descrição                                                                 |
-|------------------|---------------------------------------------------------------------------|
-| `Table.svelte`   | Tabela genérica tipada — recebe `data`, `columns`, `rowKey` e `cell` snippet |
-| `Modal.svelte`   | Shell de dialog com título, botões Cancel/Salvar e slot `body`            |
-| `Tabs.svelte`    | Barra de abas pill-style com highlight por pathname                       |
-| `Toast.svelte`   | Notificação temporária de sucesso/erro                                    |
-| `ConfirmDialog.svelte` | Dialog de confirmação para ações destrutivas                       |
+| Componente             | Descrição                                                                    |
+| ---------------------- | ---------------------------------------------------------------------------- |
+| `Table.svelte`         | Tabela genérica tipada — recebe `data`, `columns`, `rowKey` e `cell` snippet |
+| `Modal.svelte`         | Shell de dialog com título, botões Cancel/Salvar e slot `body`               |
+| `Tabs.svelte`          | Barra de abas pill-style com highlight por pathname                          |
+| `Toast.svelte`         | Notificação temporária de sucesso/erro                                       |
+| `ConfirmDialog.svelte` | Dialog de confirmação para ações destrutivas                                 |
 
 **Padrão de modal**: componente específico de domínio (ex: `CardModal.svelte`) que encapsula `Modal.svelte` com um snippet `body`. O estado `open` fica no pai.
 
@@ -82,10 +82,10 @@ friday/
 
 `src/lib/types/`:
 
-| Arquivo          | Tipos exportados                                         |
-|------------------|----------------------------------------------------------|
-| `account.ts`     | `Account`, `AccountType`, `AccountStatus`, `CardInfo`    |
-| `transaction.ts` | `Transaction`                                            |
+| Arquivo          | Tipos exportados                                      |
+| ---------------- | ----------------------------------------------------- |
+| `account.ts`     | `Account`, `AccountType`, `AccountStatus`, `CardInfo` |
+| `transaction.ts` | `Transaction`                                         |
 
 ## Utilitários
 

@@ -1,37 +1,17 @@
 <script lang="ts">
 	import { SlidersHorizontal } from 'lucide-svelte';
-	import { goto, invalidateAll } from '$app/navigation';
-	import { deserialize } from '$app/forms';
 	import Table from '$lib/components/ui/Table.svelte';
 	import type { Column } from '$lib/components/ui/Table.svelte';
 	import CurrencyModal from './CurrencyModal.svelte';
 	import EditCurrencyModal from './EditCurrencyModal.svelte';
-	import Toast from '$lib/components/ui/Toast.svelte';
+	import LoadingSpinner from '$lib/components/ui/LoadingSpinner.svelte';
+	import Pagination from '$lib/components/ui/Pagination.svelte';
+	import { showToast } from '$lib/toast.svelte';
+	import { useStreamedData } from '$lib/utils/streamed-data.svelte';
+	import { submitAction } from '$lib/utils/form-action';
 	import type { PageData } from './$types';
 
 	let { data }: { data: PageData } = $props();
-
-	// === Resolve o streamed ===
-	let resolvedData = $state<any>(null);
-	let isLoading = $state(true);
-
-	$effect(() => {
-		isLoading = true;
-		Promise.resolve(data.streamed)
-			.then(async (result) => {
-				if ('unauthorized' in result) {
-					await fetch('/login?/logout', { method: 'POST' });
-					goto('/login');
-					return;
-				}
-				resolvedData = result;
-				isLoading = false;
-			})
-			.catch((err) => {
-				console.error('Erro ao carregar moedas:', err);
-				isLoading = false;
-			});
-	});
 
 	type CurrencyType = 'fiat' | 'crypto';
 
@@ -41,6 +21,8 @@
 		symbol: string;
 		type: CurrencyType;
 	}
+
+	const streamed = useStreamedData(() => data.streamed);
 
 	const columns: Column<Currency>[] = [
 		{ key: 'id', label: 'ID' },
@@ -55,40 +37,8 @@
 		crypto: 'bg-failed/60 border border-red-900 text-red-200'
 	};
 
-	// Pagination
-	const currentPage = $derived(resolvedData?.pagination.page ?? 1);
-
-	function getVisiblePages(current: number, total: number) {
-		if (total <= 5) return Array.from({ length: total }, (_, i) => i + 1);
-		const pages: (number | '...')[] = [1, 2, 3];
-		if (current > 4) pages.push('...');
-		if (current > 3 && current < total - 1) pages.push(current);
-		pages.push('...');
-		pages.push(total - 1, total);
-		return [...new Set(pages)];
-	}
-
-	const visiblePages = $derived(getVisiblePages(currentPage, resolvedData?.pagination.pages ?? 1));
-
-	function goToPage(page: number) {
-		goto(`?page=${page}`);
-	}
-
-	// Toast
-	let toastVisible = $state(false);
-	let toastMessage = $state('');
-	let toastType = $state<'success' | 'error'>('success');
-	let toastTimer: ReturnType<typeof setTimeout>;
-
-	function showToast(message: string, type: 'success' | 'error') {
-		clearTimeout(toastTimer);
-		toastMessage = message;
-		toastType = type;
-		toastVisible = true;
-		toastTimer = setTimeout(() => {
-			toastVisible = false;
-		}, 3000);
-	}
+	const currentPage = $derived(streamed.data?.pagination?.page ?? 1);
+	const totalPages = $derived(streamed.data?.pagination?.pages ?? 1);
 
 	// Create modal
 	let createOpen = $state(false);
@@ -99,22 +49,18 @@
 		createSaving = true;
 		createError = '';
 
-		const formData = new FormData();
-		formData.set('label', saveData.label);
-		formData.set('symbol', saveData.symbol);
-		formData.set('type', saveData.type);
-
-		const res = await fetch('?/createCurrency', { method: 'POST', body: formData });
-		const result = deserialize(await res.text());
-
+		const { success, error } = await submitAction('createCurrency', {
+			label: saveData.label,
+			symbol: saveData.symbol,
+			type: saveData.type
+		});
 		createSaving = false;
 
-		if (result.type === 'success') {
+		if (success) {
 			createOpen = false;
 			showToast('Moeda criada com sucesso!', 'success');
-			await invalidateAll();
-		} else if (result.type === 'failure') {
-			createError = (result.data?.error as string) ?? 'Erro desconhecido';
+		} else {
+			createError = error!;
 			showToast(createError, 'error');
 		}
 	}
@@ -137,39 +83,25 @@
 	}) {
 		editSaving = true;
 
-		const formData = new FormData();
-		formData.set('currencyId', saveData.currencyId);
-		formData.set('label', saveData.label);
-		formData.set('symbol', saveData.symbol);
-		formData.set('type', saveData.type);
-
-		const res = await fetch('?/updateCurrency', { method: 'POST', body: formData });
-		const result = deserialize(await res.text());
-
+		const { success, error } = await submitAction('updateCurrency', {
+			currencyId: saveData.currencyId,
+			label: saveData.label,
+			symbol: saveData.symbol,
+			type: saveData.type
+		});
 		editSaving = false;
 
-		if (result.type === 'success') {
+		if (success) {
 			editOpen = false;
 			showToast('Moeda atualizada com sucesso!', 'success');
-			await invalidateAll();
-		} else if (result.type === 'failure') {
-			const msg = (result.data?.error as string) ?? 'Erro desconhecido';
-			showToast(msg, 'error');
+		} else {
+			showToast(error ?? 'Erro desconhecido', 'error');
 		}
 	}
 </script>
 
-<Toast message={toastMessage} type={toastType} visible={toastVisible} />
-
-{#if isLoading}
-	<div class="flex min-h-125 items-center justify-center py-20">
-		<div class="flex flex-col items-center gap-4">
-			<div
-				class="h-10 w-10 animate-spin rounded-full border-4 border-white/20 border-t-white"
-			></div>
-			<p class="text-sm text-gray-400">Carregando moedas...</p>
-		</div>
-	</div>
+{#if streamed.isLoading}
+	<LoadingSpinner message="Carregando moedas..." />
 {:else}
 	<CurrencyModal
 		open={createOpen}
@@ -212,7 +144,7 @@
 
 		<div class="flex flex-col items-center justify-center font-sans">
 			<div class="w-full max-w-7xl">
-				<Table data={resolvedData.currencies} {columns} rowKey="id">
+				<Table data={streamed.data!.currencies} {columns} rowKey="id">
 					{#snippet cell({ row, key })}
 						{#if key === 'type'}
 							<span
@@ -241,26 +173,7 @@
 				</Table>
 			</div>
 
-			<!-- Pagination -->
-			{#if resolvedData.pagination.pages > 1}
-				<div class="mt-8 flex items-center gap-1">
-					{#each visiblePages as page (page)}
-						{#if page === '...'}
-							<span class="px-2 text-sm text-gray-500 select-none">...</span>
-						{:else}
-							<button
-								onclick={() => goToPage(page as number)}
-								class="h-9 w-9 cursor-pointer rounded-lg text-sm font-medium transition-all duration-150
-								{currentPage === page
-									? 'bg-gray-600 text-white'
-									: 'text-gray-400 hover:bg-white/10 hover:text-white'}"
-							>
-								{page}
-							</button>
-						{/if}
-					{/each}
-				</div>
-			{/if}
+			<Pagination {currentPage} {totalPages} />
 		</div>
 	</section>
 {/if}

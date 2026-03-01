@@ -14,7 +14,11 @@
 	import { goto } from '$app/navigation';
 	import { navigating, page } from '$app/state';
 	import { resolve } from '$app/paths';
+	import Toast from '$lib/components/ui/Toast.svelte';
+	import { getToastState } from '$lib/toast.svelte';
+
 	let { children } = $props();
+	const toast = getToastState();
 
 	let sidebarOpen = $state(false);
 
@@ -121,3 +125,5 @@
 		</main>
 	</div>
 </div>
+
+<Toast message={toast.message} type={toast.type} visible={toast.visible} />

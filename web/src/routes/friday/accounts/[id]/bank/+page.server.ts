@@ -64,22 +64,20 @@ async function loadData(
 	const pmMap = new Map<string, ApiPaymentMethod>();
 	for (const pm of pmData.items ?? []) pmMap.set(pm.id, pm);
 
-	const transactions: Transaction[] = (transactionsData.items ?? []).map(
-		(t: ApiTransaction) => {
-			const tag = tagsMap.get(t.tag_id);
-			const pm = pmMap.get(t.payment_method_id);
-			return {
-				id: t.id,
-				dateTransaction: t.date_transaction,
-				category: tag?.category.label ?? 'Desconhecida',
-				subcategory: tag?.subcategory.label ?? '-',
-				paymentMethod: pm?.label ?? '-',
-				type: tag?.category.type ?? 'outcome',
-				value: parseFloat(t.value),
-				description: t.description
-			};
-		}
-	);
+	const transactions: Transaction[] = (transactionsData.items ?? []).map((t: ApiTransaction) => {
+		const tag = tagsMap.get(t.tag_id);
+		const pm = pmMap.get(t.payment_method_id);
+		return {
+			id: t.id,
+			dateTransaction: t.date_transaction,
+			category: tag?.category.label ?? 'Desconhecida',
+			subcategory: tag?.subcategory.label ?? '-',
+			paymentMethod: pm?.label ?? '-',
+			type: tag?.category.type ?? 'outcome',
+			value: parseFloat(t.value),
+			description: t.description
+		};
+	});
 
 	const cards: CardInfo[] = (cardsData.items ?? []).map((c: ApiCard) => ({
 		id: c.id,
@@ -131,7 +129,14 @@ export const actions: Actions = {
 
 		const res = await apiFetch('/finance/cards', token, {
 			method: 'POST',
-			body: JSON.stringify({ account_id: params.id, label: label.trim(), flag, close_day, due_day, limit })
+			body: JSON.stringify({
+				account_id: params.id,
+				label: label.trim(),
+				flag,
+				close_day,
+				due_day,
+				limit
+			})
 		});
 
 		if (!res.ok) {
