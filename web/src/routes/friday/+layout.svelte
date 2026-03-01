@@ -12,7 +12,7 @@
 	} from 'lucide-svelte';
 
 	import { goto } from '$app/navigation';
-	import { page } from '$app/state';
+	import { navigating, page } from '$app/state';
 	import { resolve } from '$app/paths';
 	let { children } = $props();
 
@@ -106,7 +106,17 @@
 		</aside>
 
 		<!-- CONTENT -->
-		<main class="flex-1 overflow-y-auto bg-[#0d0d0f] p-6">
+		<main class="relative flex-1 overflow-y-auto bg-[#0d0d0f] p-6">
+			{#if navigating?.to?.url.pathname.startsWith('/friday/accounts/')}
+				<div class="absolute inset-0 z-10 flex items-center justify-center bg-[#0d0d0f]">
+					<div class="flex flex-col items-center gap-4">
+						<div
+							class="h-10 w-10 animate-spin rounded-full border-4 border-white/20 border-t-white"
+						></div>
+						<p class="text-sm text-gray-400">Carregando...</p>
+					</div>
+				</div>
+			{/if}
 			{@render children()}
 		</main>
 	</div>

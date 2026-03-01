@@ -12,12 +12,10 @@ export interface Account {
 }
 
 export interface CardInfo {
-	id: number;
-	name: string;
+	id: string;
+	label: string;
 	flag: 'visa' | 'mastercard';
-	closing_day: number;
+	close_day: number;
 	due_day: number;
 	limit: number;
-	bill: number;
-	total_bill: number;
 }
