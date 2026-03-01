@@ -1,9 +1,11 @@
-export type AccountType = 'bank' | 'investment' | 'cash' | 'benefict';
+export type AccountType = 'bank' | 'investment' | 'cash' | 'benefit';
+export type AccountStatus = 'activate' | 'deactivate';
 
 export interface Account {
-	id: number;
+	id: string;
 	institution: string;
-	active: boolean;
+	institutionId: string;
+	status: AccountStatus;
 	type: AccountType;
 	logoPath: string;
 	subtype?: string | null;

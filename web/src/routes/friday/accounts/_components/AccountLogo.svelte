@@ -18,10 +18,10 @@
 	const s = $derived(sizes[variant]);
 
 	const deparaAccountType: Record<AccountType, string> = {
-		bank: 'Conta Corrent',
+		bank: 'Conta Corrente',
 		investment: 'Corretora',
 		cash: 'Cash',
-		benefict: 'Benefícios'
+		benefit: 'Benefícios'
 	};
 </script>
 
