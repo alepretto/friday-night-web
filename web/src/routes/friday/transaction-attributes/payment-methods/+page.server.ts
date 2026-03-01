@@ -11,7 +11,7 @@ interface ApiPaymentMethod {
 async function loadData(token: string, page: string) {
 	const res = await apiFetch(`/finance/payment-methods?page=${page}&size=20`, token);
 
-	if (res.status === 401) throw redirect(303, '/login');
+	if (res.status === 401) return { unauthorized: true as const };
 
 	const data = await res.json();
 

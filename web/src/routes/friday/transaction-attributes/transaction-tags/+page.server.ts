@@ -20,6 +20,8 @@ interface ApiTag {
 	category_id: string;
 	subcategory_id: string;
 	active: boolean;
+	category: { id: string; label: string; type: 'outcome' | 'income' };
+	subcategory: { id: string; label: string };
 }
 
 async function loadData(token: string, page: string) {
@@ -29,7 +31,7 @@ async function loadData(token: string, page: string) {
 	]);
 
 	if (tagsRes.status === 401 || catsRes.status === 401) {
-		throw redirect(303, '/login');
+		return { unauthorized: true as const };
 	}
 
 	const tagsData = await tagsRes.json();
@@ -40,21 +42,16 @@ async function loadData(token: string, page: string) {
 		subcategoriesMap[cat.id] = cat.subcategories ?? [];
 	}
 
-	const tags = (tagsData.items ?? []).map((tag: ApiTag) => {
-		const category = categories.find((c) => c.id === tag.category_id);
-		const subcategory = (subcategoriesMap[tag.category_id] ?? []).find(
-			(s) => s.id === tag.subcategory_id
-		);
-		return {
-			id: tag.id,
-			category: category?.label ?? '-',
-			subcategory: subcategory?.label ?? '-',
-			type: (category?.type ?? 'outcome') as 'outcome' | 'income',
-			active: tag.active,
-			category_id: tag.category_id,
-			subcategory_id: tag.subcategory_id
-		};
-	});
+	// A API já retorna category e subcategory aninhados no TagResponse
+	const tags = (tagsData.items ?? []).map((tag: ApiTag) => ({
+		id: tag.id,
+		category: tag.category.label,
+		subcategory: tag.subcategory.label,
+		type: tag.category.type,
+		active: tag.active,
+		category_id: tag.category_id,
+		subcategory_id: tag.subcategory_id
+	}));
 
 	return {
 		tags,

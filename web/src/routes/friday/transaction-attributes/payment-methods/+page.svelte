@@ -1,6 +1,6 @@
 <script lang="ts">
 	import { CircleCheck, CircleSlash } from 'lucide-svelte';
-	import { invalidateAll } from '$app/navigation';
+	import { goto, invalidateAll } from '$app/navigation';
 	import { deserialize } from '$app/forms';
 	import PaymentMethodModal from './PaymentMethodModal.svelte';
 	import Toast from '$lib/components/ui/Toast.svelte';
@@ -22,7 +22,12 @@
 	$effect(() => {
 		isLoading = true;
 		Promise.resolve(data.streamed)
-			.then((result) => {
+			.then(async (result) => {
+				if ('unauthorized' in result) {
+					await fetch('/login?/logout', { method: 'POST' });
+					goto('/login');
+					return;
+				}
 				resolvedData = result;
 				isLoading = false;
 			})

@@ -24,7 +24,7 @@ async function loadData(token: string) {
 	]);
 
 	if (accountsRes.status === 401 || institutionsRes.status === 401) {
-		throw redirect(303, '/login');
+		return { unauthorized: true as const };
 	}
 
 	const accountsData = await accountsRes.json();
