@@ -15,16 +15,13 @@ RUN bun install --frozen-lockfile --production
 # ── Production stage ─────────────────────────────────────────
 FROM node:22-slim
 
-RUN groupadd --gid 1000 appuser \
-    && useradd --uid 1000 --gid appuser --no-create-home appuser
-
 WORKDIR /app
 
-COPY --from=builder --chown=appuser:appuser /app/build build/
-COPY --from=builder --chown=appuser:appuser /app/package.json .
-COPY --from=builder --chown=appuser:appuser /app/node_modules node_modules/
+COPY --from=builder --chown=node:node /app/build build/
+COPY --from=builder --chown=node:node /app/package.json .
+COPY --from=builder --chown=node:node /app/node_modules node_modules/
 
-USER appuser
+USER node
 
 EXPOSE 3000
 
