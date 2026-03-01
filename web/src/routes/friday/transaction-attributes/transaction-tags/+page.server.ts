@@ -26,8 +26,8 @@ interface ApiTag {
 
 async function loadData(token: string, page: string) {
 	const [tagsRes, catsRes] = await Promise.all([
-		apiFetch(`/finance/tags?page=${page}&size=10`, token),
-		apiFetch('/finance/categories/with-subcategories', token)
+		apiFetch(`/api/v1/finance/tags?page=${page}&size=10`, token),
+		apiFetch('/api/v1/finance/categories/with-subcategories', token)
 	]);
 
 	if (tagsRes.status === 401 || catsRes.status === 401) {
@@ -95,7 +95,7 @@ export const actions: Actions = {
 		}
 
 		if (!categoryId && newCategory) {
-			const res = await apiFetch('/finance/categories', token, {
+			const res = await apiFetch('/api/v1/finance/categories', token, {
 				method: 'POST',
 				body: JSON.stringify({ label: newCategory, type })
 			});
@@ -109,7 +109,7 @@ export const actions: Actions = {
 		}
 
 		if (!subcategoryId && newSubcategory) {
-			const res = await apiFetch('/finance/subcategories', token, {
+			const res = await apiFetch('/api/v1/finance/subcategories', token, {
 				method: 'POST',
 				body: JSON.stringify({ category_id: categoryId, label: newSubcategory })
 			});
@@ -122,7 +122,7 @@ export const actions: Actions = {
 			subcategoryId = sub.id;
 		}
 
-		const res = await apiFetch('/finance/tags', token, {
+		const res = await apiFetch('/api/v1/finance/tags', token, {
 			method: 'POST',
 			body: JSON.stringify({ category_id: categoryId, subcategory_id: subcategoryId, active: true })
 		});
@@ -147,7 +147,7 @@ export const actions: Actions = {
 			return fail(400, { error: 'Dados inválidos' });
 		}
 
-		const res = await apiFetch(`/finance/tags/${tagId}`, token, {
+		const res = await apiFetch(`/api/v1/finance/tags/${tagId}`, token, {
 			method: 'PATCH',
 			body: JSON.stringify({ category_id: categoryId, subcategory_id: subcategoryId })
 		});
@@ -167,8 +167,8 @@ export const actions: Actions = {
 		const active = data.get('active') === 'true';
 
 		const endpoint = active
-			? `/finance/tags/${tagId}/deactivate`
-			: `/finance/tags/${tagId}/activate`;
+			? `/api/v1/finance/tags/${tagId}/deactivate`
+			: `/api/v1/finance/tags/${tagId}/activate`;
 
 		const res = await apiFetch(endpoint, token, { method: 'PATCH' });
 		if (!res.ok) {

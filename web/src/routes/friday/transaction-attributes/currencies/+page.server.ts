@@ -10,7 +10,7 @@ interface ApiCurrency {
 }
 
 async function loadData(token: string, page: string) {
-	const res = await apiFetch(`/finance/currencies?page=${page}&size=10`, token);
+	const res = await apiFetch(`/api/v1/finance/currencies?page=${page}&size=10`, token);
 
 	if (res.status === 401) return { unauthorized: true as const };
 
@@ -59,7 +59,7 @@ export const actions: Actions = {
 
 		const apiType = type === 'crypto' ? 'cripto' : type;
 
-		const res = await apiFetch('/finance/currencies', token, {
+		const res = await apiFetch('/api/v1/finance/currencies', token, {
 			method: 'POST',
 			body: JSON.stringify({ label, symbol, type: apiType })
 		});
@@ -87,7 +87,7 @@ export const actions: Actions = {
 
 		const apiType = type === 'crypto' ? 'cripto' : type;
 
-		const res = await apiFetch(`/finance/currencies/${currencyId}`, token, {
+		const res = await apiFetch(`/api/v1/finance/currencies/${currencyId}`, token, {
 			method: 'PATCH',
 			body: JSON.stringify({ label, symbol, type: apiType })
 		});

@@ -9,7 +9,7 @@ interface ApiPaymentMethod {
 }
 
 async function loadData(token: string, page: string) {
-	const res = await apiFetch(`/finance/payment-methods?page=${page}&size=20`, token);
+	const res = await apiFetch(`/api/v1/finance/payment-methods?page=${page}&size=20`, token);
 
 	if (res.status === 401) return { unauthorized: true as const };
 
@@ -47,7 +47,7 @@ export const actions: Actions = {
 			return fail(400, { error: 'Descrição é obrigatória' });
 		}
 
-		const res = await apiFetch('/finance/payment-methods', token, {
+		const res = await apiFetch('/api/v1/finance/payment-methods', token, {
 			method: 'POST',
 			body: JSON.stringify({ label, active: true })
 		});
@@ -67,8 +67,8 @@ export const actions: Actions = {
 		const active = data.get('active') === 'true';
 
 		const endpoint = active
-			? `/finance/payment-methods/${methodId}/deactivate`
-			: `/finance/payment-methods/${methodId}/activate`;
+			? `/api/v1/finance/payment-methods/${methodId}/deactivate`
+			: `/api/v1/finance/payment-methods/${methodId}/activate`;
 
 		const res = await apiFetch(endpoint, token, { method: 'PATCH' });
 
