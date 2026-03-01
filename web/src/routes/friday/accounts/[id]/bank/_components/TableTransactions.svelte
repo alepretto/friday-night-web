@@ -5,9 +5,11 @@
 
 	interface Props {
 		transactions: Transaction[];
+		onedit: (transaction: Transaction) => void;
+		ondelete: (transaction: Transaction) => void;
 	}
 
-	let { transactions }: Props = $props();
+	let { transactions, onedit, ondelete }: Props = $props();
 
 	const typeBadge = {
 		income: 'bg-success/50 border-success text-green-500/80',
@@ -60,8 +62,12 @@
 			</span>
 
 			<div class="flex gap-3">
-				<SquarePen class="cursor-pointer text-orange-800" />
-				<Trash2 class="cursor-pointer text-gray-700" />
+				<button onclick={() => onedit(transaction)} aria-label="Editar transação">
+					<SquarePen class="cursor-pointer text-orange-800" />
+				</button>
+				<button onclick={() => ondelete(transaction)} aria-label="Deletar transação">
+					<Trash2 class="cursor-pointer text-gray-700" />
+				</button>
 			</div>
 		</div>
 	{/each}

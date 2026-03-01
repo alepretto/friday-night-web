@@ -8,6 +8,8 @@ interface ApiTransaction {
 	id: string;
 	tag_id: string;
 	payment_method_id: string;
+	card_id: string | null;
+	currency_id: string;
 	value: string;
 	description: string | null;
 	date_transaction: string;
@@ -79,7 +81,11 @@ async function loadData(
 			paymentMethod: pm?.label ?? '-',
 			type: tag?.category.type ?? 'outcome',
 			value: parseFloat(t.value),
-			description: t.description
+			description: t.description,
+			tagId: t.tag_id,
+			paymentMethodId: t.payment_method_id,
+			cardId: t.card_id,
+			currencyId: t.currency_id
 		};
 	});
 
@@ -110,17 +116,19 @@ async function loadData(
 			label: pm.label
 		}));
 
-	const brlCurrency = (currenciesData.items ?? []).find(
-		(c: { id: string; symbol: string }) => c.symbol === 'BRL'
+	const availableCurrencies = (currenciesData.items ?? []).map(
+		(c: { id: string; symbol: string; label: string }) => ({ id: c.id, symbol: c.symbol, label: c.label })
 	);
-	const currencyId: string = brlCurrency?.id ?? '';
+	const defaultCurrencyId: string =
+		availableCurrencies.find((c) => c.symbol === 'BRL')?.id ?? availableCurrencies[0]?.id ?? '';
 
 	return {
 		transactions,
 		cards,
 		availableTags,
 		availablePaymentMethods,
-		currencyId,
+		availableCurrencies,
+		defaultCurrencyId,
 		pagination: {
 			page: (transactionsData.page as number) ?? 1,
 			pages: (transactionsData.pages as number) ?? 1,
@@ -203,7 +211,7 @@ export const actions: Actions = {
 
 		if (cardId) body.card_id = cardId;
 		if (description?.trim()) body.description = description.trim();
-		if (dateTransaction) body.date_transaction = dateTransaction;
+		if (dateTransaction) body.date_transaction = new Date(dateTransaction).toISOString();
 
 		const res = await apiFetch('/api/v1/finance/transactions', token, {
 			method: 'POST',
@@ -212,7 +220,69 @@ export const actions: Actions = {
 
 		if (!res.ok) {
 			const err = await res.json().catch(() => ({}));
+			console.error('[createTransaction] API error:', res.status, JSON.stringify(err));
 			return fail(res.status, { error: err.message ?? 'Erro ao criar transação' });
+		}
+
+		return { success: true };
+	},
+
+	updateTransaction: async ({ request, locals, params }) => {
+		const { token } = locals;
+		const data = await request.formData();
+
+		const transactionId = data.get('id') as string;
+		const tagId = data.get('tagId') as string;
+		const paymentMethodId = data.get('paymentMethodId') as string;
+		const cardId = data.get('cardId') as string;
+		const value = data.get('value') as string;
+		const description = data.get('description') as string;
+		const dateTransaction = data.get('dateTransaction') as string;
+		const currencyId = data.get('currencyId') as string;
+
+		if (!transactionId || !tagId || !paymentMethodId || !value) {
+			return fail(400, { error: 'Campos obrigatórios não preenchidos' });
+		}
+
+		const body: Record<string, string> = {
+			account_id: params.id,
+			tag_id: tagId,
+			payment_method_id: paymentMethodId,
+			currency_id: currencyId,
+			value
+		};
+
+		body.card_id = cardId || null;
+		body.description = description?.trim() || null;
+		if (dateTransaction) body.date_transaction = new Date(dateTransaction).toISOString();
+
+		const res = await apiFetch(`/api/v1/finance/transactions/${transactionId}`, token, {
+			method: 'PATCH',
+			body: JSON.stringify(body)
+		});
+
+		if (!res.ok) {
+			const err = await res.json().catch(() => ({}));
+			return fail(res.status, { error: err.message ?? 'Erro ao atualizar transação' });
+		}
+
+		return { success: true };
+	},
+
+	deleteTransaction: async ({ request, locals }) => {
+		const { token } = locals;
+		const data = await request.formData();
+		const transactionId = data.get('transactionId') as string;
+
+		if (!transactionId) return fail(400, { error: 'ID da transação não informado' });
+
+		const res = await apiFetch(`/api/v1/finance/transactions/${transactionId}`, token, {
+			method: 'DELETE'
+		});
+
+		if (!res.ok) {
+			const err = await res.json().catch(() => ({}));
+			return fail(res.status, { error: err.message ?? 'Erro ao deletar transação' });
 		}
 
 		return { success: true };

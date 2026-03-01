@@ -7,4 +7,8 @@ export interface Transaction {
 	type: 'outcome' | 'income';
 	value: number;
 	description: string | null;
+	tagId: string;
+	paymentMethodId: string;
+	cardId: string | null;
+	currencyId: string;
 }
