@@ -5,11 +5,12 @@
 
 	interface Props {
 		open: boolean;
+		saving?: boolean;
 		onsave: (data: { label: string; symbol: string; type: CurrencyType }) => void;
 		onclose: () => void;
 	}
 
-	let { open, onclose, onsave }: Props = $props();
+	let { open, onclose, onsave, saving = false }: Props = $props();
 
 	let label = $state('');
 	let symbol = $state('');
@@ -17,14 +18,14 @@
 
 	function handleSave() {
 		if (!label.trim() || !symbol.trim() || !type) return;
-		onsave({ label, symbol, type });
+		onsave({ label: label.trim(), symbol: symbol.trim(), type });
 		label = '';
 		symbol = '';
 		type = '';
 	}
 </script>
 
-<Modal title="New Currency" {open} {onclose} onsave={handleSave}>
+<Modal title="New Currency" {open} {onclose} onsave={handleSave} {saving}>
 	{#snippet body()}
 		<div class="flex flex-col gap-4">
 			<div class="flex w-full flex-col gap-3">
@@ -47,7 +48,7 @@
 					/>
 				</div>
 				<div class="flex w-full flex-col gap-3">
-					<label class="text-bold pl-4 text-xl" for="label">Type</label>
+					<label class="text-bold pl-4 text-xl" for="currency-type">Type</label>
 					<select
 						name="currency-type"
 						id="currency-type"

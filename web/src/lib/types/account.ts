@@ -1,21 +1,21 @@
-export type AccountType = 'bank' | 'investment' | 'cash' | 'benefict';
+export type AccountType = 'bank' | 'investment' | 'cash' | 'benefit';
+export type AccountStatus = 'activate' | 'deactivate';
 
 export interface Account {
-	id: number;
+	id: string;
 	institution: string;
-	active: boolean;
+	institutionId: string;
+	status: AccountStatus;
 	type: AccountType;
 	logoPath: string;
 	subtype?: string | null;
 }
 
 export interface CardInfo {
-	id: number;
-	name: string;
+	id: string;
+	label: string;
 	flag: 'visa' | 'mastercard';
-	closing_day: number;
+	close_day: number;
 	due_day: number;
 	limit: number;
-	bill: number;
-	total_bill: number;
 }

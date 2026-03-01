@@ -6,20 +6,19 @@
 
 	const id = page.params.id;
 
-	const account: Account = {
-		id: 1,
-		institution: 'Santander',
-		active: true,
-		type: 'bank',
-		logoPath: '/logo-santander 1.png'
-	};
+	interface Props {
+		data: { account: Account };
+		children: import('svelte').Snippet;
+	}
+
+	let { data, children }: Props = $props();
+
+	const account = $derived(data.account);
 
 	const tabs = [
 		{ label: 'Conta Corrente', route: `/friday/accounts/${id}/bank` },
 		{ label: 'Corretora', route: `/friday/accounts/${id}/investment` }
 	];
-
-	let { children } = $props();
 </script>
 
 <main class="p-5">

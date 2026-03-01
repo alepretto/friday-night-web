@@ -16,6 +16,7 @@
 
 	interface Props {
 		open: boolean;
+		saving?: boolean;
 		onclose: () => void;
 		onsave: (data: {
 			type: TagType;
@@ -28,7 +29,7 @@
 		subcategoriesMap: Record<string, Subcategory[]>;
 	}
 
-	let { open, onclose, onsave, categories, subcategoriesMap }: Props = $props();
+	let { open, onclose, onsave, saving = false, categories, subcategoriesMap }: Props = $props();
 
 	let selectedType: TagType = $state('outcome');
 	let categoryId = $state('');
@@ -75,7 +76,7 @@
 	}
 </script>
 
-<Modal title="New Tag" {open} {onclose} onsave={handleSave}>
+<Modal title="New Tag" {open} {onclose} onsave={handleSave} {saving}>
 	{#snippet body()}
 		<div class="flex flex-col gap-6">
 			<div class="flex rounded-full border border-white/10 bg-white/5 p-1">
