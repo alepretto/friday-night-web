@@ -20,7 +20,14 @@
 			streamed: Promise<{
 				transactions: Transaction[];
 				cards: CardInfo[];
-				availableTags: { id: string; label: string; type: 'outcome' | 'income' }[];
+				availableTags: {
+					id: string;
+					categoryId: string;
+					subcategoryId: string;
+					categoryLabel: string;
+					subcategoryLabel: string;
+					type: 'outcome' | 'income';
+				}[];
 				availablePaymentMethods: { id: string; label: string }[];
 				currencyId: string;
 				pagination: { page: number; pages: number; total: number };
@@ -29,7 +36,6 @@
 	}
 
 	let { data }: Props = $props();
-
 	const streamed = useStreamedData(() => data.streamed);
 	const transactions = $derived<Transaction[]>(streamed.data?.transactions ?? []);
 	const cards = $derived<CardInfo[]>(streamed.data?.cards ?? []);
@@ -111,6 +117,7 @@
 	async function handleSaveTransaction(txData: {
 		tagId: string;
 		paymentMethodId: string;
+		cardId: string;
 		value: string;
 		description: string;
 		dateTransaction: string;
@@ -120,6 +127,7 @@
 		const { success, error } = await submitAction('createTransaction', {
 			tagId: txData.tagId,
 			paymentMethodId: txData.paymentMethodId,
+			cardId: txData.cardId,
 			value: txData.value,
 			description: txData.description,
 			dateTransaction: txData.dateTransaction,
@@ -161,6 +169,7 @@
 	onsave={handleSaveTransaction}
 	tags={availableTags}
 	paymentMethods={availablePaymentMethods}
+	cards={cards.map((c) => ({ id: c.id, label: c.label }))}
 />
 
 {#if streamed.isLoading}

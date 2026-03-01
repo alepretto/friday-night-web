@@ -11,12 +11,34 @@ Frontend do **Friday Night** — assistente pessoal de finanças, construído co
 
 ## Como executar
 
+### Desenvolvimento local
+
 ```bash
 bun install       # instalar dependências
 bun run dev       # dev server em http://localhost:5173
 ```
 
 Requer a API rodando em `http://localhost:8000` (ver `friday-night-api/`).
+
+### Docker
+
+```bash
+docker build -t friday-night-web .
+docker run -e API_BASE_URL=http://localhost:8000/api/v1 -p 3000:3000 friday-night-web
+```
+
+Ou via docker-compose na raiz do monorepo:
+
+```bash
+docker compose up web
+```
+
+## Variáveis de ambiente
+
+| Variável | Descrição | Default |
+|----------|-----------|---------|
+| `API_BASE_URL` | URL base da API (server-side) | `http://localhost:8000/api/v1` |
+| `PORT` | Porta do servidor de produção | `3000` |
 
 ## Comandos
 

@@ -5,11 +5,19 @@
 
 	interface TagOption {
 		id: string;
-		label: string;
+		categoryId: string;
+		subcategoryId: string;
+		categoryLabel: string;
+		subcategoryLabel: string;
 		type: TagType;
 	}
 
 	interface PaymentMethodOption {
+		id: string;
+		label: string;
+	}
+
+	interface CardOption {
 		id: string;
 		label: string;
 	}
@@ -21,47 +29,105 @@
 		onsave: (data: {
 			tagId: string;
 			paymentMethodId: string;
+			cardId: string;
 			value: string;
 			description: string;
 			dateTransaction: string;
 		}) => void;
 		tags: TagOption[];
 		paymentMethods: PaymentMethodOption[];
+		cards: CardOption[];
 	}
 
-	let { open, saving = false, onclose, onsave, tags, paymentMethods }: Props = $props();
+	let { open, saving = false, onclose, onsave, tags, paymentMethods, cards }: Props = $props();
 
 	let selectedType: TagType = $state('outcome');
-	let tagId = $state('');
+	let categoryId = $state('');
+	let subcategoryId = $state('');
 	let paymentMethodId = $state('');
+	let cardId = $state('');
 	let value = $state('');
 	let description = $state('');
-	let dateTransaction = $state(new Date().toISOString().slice(0, 10));
+	let dateTransaction = $state(nowLocal());
 
-	const filteredTags = $derived(tags.filter((t) => t.type === selectedType));
+	// Categorias únicas filtradas pelo tipo
+	const categories = $derived(() => {
+		const map = new Map<string, string>();
+		for (const tag of tags) {
+			if (tag.type === selectedType) {
+				map.set(tag.categoryId, tag.categoryLabel);
+			}
+		}
+		return [...map.entries()].map(([id, label]) => ({ id, label }));
+	});
+
+	// Subcategorias filtradas pela categoria selecionada
+	const subcategories = $derived(() => {
+		const map = new Map<string, string>();
+		for (const tag of tags) {
+			if (tag.type === selectedType && tag.categoryId === categoryId) {
+				map.set(tag.subcategoryId, tag.subcategoryLabel);
+			}
+		}
+		return [...map.entries()].map(([id, label]) => ({ id, label }));
+	});
+
+	// Resolve tag_id a partir de categoria + subcategoria
+	const resolvedTagId = $derived(() => {
+		const tag = tags.find(
+			(t) =>
+				t.type === selectedType && t.categoryId === categoryId && t.subcategoryId === subcategoryId
+		);
+		return tag?.id ?? '';
+	});
+
+	const selectedPmLabel = $derived(
+		paymentMethods.find((pm) => pm.id === paymentMethodId)?.label ?? ''
+	);
+	const isCreditCard = $derived(selectedPmLabel.toLowerCase().includes('cartão de crédito'));
+
+	function nowLocal(): string {
+		const d = new Date();
+		d.setMinutes(d.getMinutes() - d.getTimezoneOffset());
+		return d.toISOString().slice(0, 16);
+	}
 
 	$effect(() => {
 		if (open) {
 			selectedType = 'outcome';
-			tagId = '';
+			categoryId = '';
+			subcategoryId = '';
 			paymentMethodId = '';
+			cardId = '';
 			value = '';
 			description = '';
-			dateTransaction = new Date().toISOString().slice(0, 10);
+			dateTransaction = nowLocal();
 		}
 	});
 
 	function selectType(type: TagType) {
 		selectedType = type;
-		tagId = '';
+		categoryId = '';
+		subcategoryId = '';
+	}
+
+	function handleCategoryChange() {
+		subcategoryId = '';
+	}
+
+	function handlePmChange() {
+		cardId = '';
 	}
 
 	function handleSave() {
+		const tagId = resolvedTagId();
 		if (!tagId || !paymentMethodId || !value || parseFloat(value) <= 0) return;
+		if (isCreditCard && !cardId) return;
 
 		onsave({
 			tagId,
 			paymentMethodId,
+			cardId,
 			value,
 			description: description.trim(),
 			dateTransaction
@@ -89,19 +155,37 @@
 				{/each}
 			</div>
 
-			<!-- Tag -->
-			<div class="flex flex-col gap-2">
-				<label class="pl-1 text-sm text-gray-400" for="tx-tag">Tag</label>
-				<select
-					id="tx-tag"
-					bind:value={tagId}
-					class="w-full rounded-xl bg-white/10 px-4 py-2 text-white outline-none focus:ring-2 focus:ring-white/20"
-				>
-					<option class="text-black" value="">Selecione...</option>
-					{#each filteredTags as tag (tag.id)}
-						<option class="text-black" value={tag.id}>{tag.label}</option>
-					{/each}
-				</select>
+			<!-- Categoria e Subcategoria -->
+			<div class="grid grid-cols-2 gap-4">
+				<div class="flex flex-col gap-2">
+					<label class="pl-1 text-sm text-gray-400" for="tx-category">Categoria</label>
+					<select
+						id="tx-category"
+						bind:value={categoryId}
+						onchange={handleCategoryChange}
+						class="w-full rounded-xl bg-white/10 px-4 py-2 text-white outline-none focus:ring-2 focus:ring-white/20"
+					>
+						<option class="text-black" value="">Selecione...</option>
+						{#each categories() as cat (cat.id)}
+							<option class="text-black" value={cat.id}>{cat.label}</option>
+						{/each}
+					</select>
+				</div>
+
+				<div class="flex flex-col gap-2">
+					<label class="pl-1 text-sm text-gray-400" for="tx-subcategory">Subcategoria</label>
+					<select
+						id="tx-subcategory"
+						bind:value={subcategoryId}
+						disabled={!categoryId}
+						class="w-full rounded-xl bg-white/10 px-4 py-2 text-white outline-none focus:ring-2 focus:ring-white/20 disabled:cursor-not-allowed disabled:opacity-40"
+					>
+						<option class="text-black" value="">Selecione...</option>
+						{#each subcategories() as sub (sub.id)}
+							<option class="text-black" value={sub.id}>{sub.label}</option>
+						{/each}
+					</select>
+				</div>
 			</div>
 
 			<!-- Payment Method -->
@@ -110,6 +194,7 @@
 				<select
 					id="tx-pm"
 					bind:value={paymentMethodId}
+					onchange={handlePmChange}
 					class="w-full rounded-xl bg-white/10 px-4 py-2 text-white outline-none focus:ring-2 focus:ring-white/20"
 				>
 					<option class="text-black" value="">Selecione...</option>
@@ -118,6 +203,23 @@
 					{/each}
 				</select>
 			</div>
+
+			<!-- Card selector (only when credit card) -->
+			{#if isCreditCard}
+				<div class="flex flex-col gap-2">
+					<label class="pl-1 text-sm text-gray-400" for="tx-card">Cartão</label>
+					<select
+						id="tx-card"
+						bind:value={cardId}
+						class="w-full rounded-xl bg-white/10 px-4 py-2 text-white outline-none focus:ring-2 focus:ring-white/20"
+					>
+						<option class="text-black" value="">Selecione o cartão...</option>
+						{#each cards as card (card.id)}
+							<option class="text-black" value={card.id}>{card.label}</option>
+						{/each}
+					</select>
+				</div>
+			{/if}
 
 			<!-- Value and Date -->
 			<div class="grid grid-cols-2 gap-4">
@@ -135,10 +237,10 @@
 				</div>
 
 				<div class="flex flex-col gap-2">
-					<label class="pl-1 text-sm text-gray-400" for="tx-date">Data</label>
+					<label class="pl-1 text-sm text-gray-400" for="tx-date">Data e Hora</label>
 					<input
 						id="tx-date"
-						type="date"
+						type="datetime-local"
 						bind:value={dateTransaction}
 						class="w-full rounded-xl bg-white/10 px-4 py-2 text-white outline-none focus:ring-2 focus:ring-white/20"
 					/>

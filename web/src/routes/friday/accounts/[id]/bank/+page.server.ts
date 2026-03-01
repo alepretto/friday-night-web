@@ -15,6 +15,7 @@ interface ApiTransaction {
 
 interface ApiTag {
 	id: string;
+	active: boolean;
 	category: { id: string; label: string; type: 'outcome' | 'income' };
 	subcategory: { id: string; label: string };
 }
@@ -22,6 +23,7 @@ interface ApiTag {
 interface ApiPaymentMethod {
 	id: string;
 	label: string;
+	active: boolean;
 }
 
 interface ApiCard {
@@ -46,10 +48,10 @@ async function loadData(
 
 	const [transactionsRes, tagsRes, pmRes, cardsRes, currenciesRes] = await Promise.all([
 		apiFetch(transactionsUrl, token),
-		apiFetch('/finance/tags?size=200', token),
-		apiFetch('/finance/payment-methods?size=200', token),
+		apiFetch('/finance/tags?size=100', token),
+		apiFetch('/finance/payment-methods?size=100', token),
 		apiFetch(`/finance/cards?account_id=${accountId}&size=100`, token),
-		apiFetch('/finance/currencies?size=200', token)
+		apiFetch('/finance/currencies?size=100', token)
 	]);
 
 	if (transactionsRes.status === 401) return { unauthorized: true as const };
@@ -90,16 +92,23 @@ async function loadData(
 		limit: parseFloat(c.limit)
 	}));
 
-	const availableTags = (tagsData.items ?? []).map((tag: ApiTag) => ({
+	const activeTags = (tagsData.items ?? []).filter((tag: ApiTag) => tag.active);
+
+	const availableTags = activeTags.map((tag: ApiTag) => ({
 		id: tag.id,
-		label: `${tag.category.label} / ${tag.subcategory.label}`,
-		type: tag.category.type
+		categoryId: tag.category.id,
+		subcategoryId: tag.subcategory.id,
+		categoryLabel: tag.category.label,
+		subcategoryLabel: tag.subcategory.label,
+		type: tag.category.type as 'outcome' | 'income'
 	}));
 
-	const availablePaymentMethods = (pmData.items ?? []).map((pm: ApiPaymentMethod) => ({
-		id: pm.id,
-		label: pm.label
-	}));
+	const availablePaymentMethods = (pmData.items ?? [])
+		.filter((pm: ApiPaymentMethod) => pm.active)
+		.map((pm: ApiPaymentMethod) => ({
+			id: pm.id,
+			label: pm.label
+		}));
 
 	const brlCurrency = (currenciesData.items ?? []).find(
 		(c: { id: string; symbol: string }) => c.symbol === 'BRL'
@@ -174,6 +183,7 @@ export const actions: Actions = {
 
 		const tagId = data.get('tagId') as string;
 		const paymentMethodId = data.get('paymentMethodId') as string;
+		const cardId = data.get('cardId') as string;
 		const value = data.get('value') as string;
 		const description = data.get('description') as string;
 		const dateTransaction = data.get('dateTransaction') as string;
@@ -191,8 +201,9 @@ export const actions: Actions = {
 			value
 		};
 
+		if (cardId) body.card_id = cardId;
 		if (description?.trim()) body.description = description.trim();
-		if (dateTransaction) body.date_transaction = dateTransaction + 'T12:00:00';
+		if (dateTransaction) body.date_transaction = dateTransaction;
 
 		const res = await apiFetch('/finance/transactions', token, {
 			method: 'POST',
