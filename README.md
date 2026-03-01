@@ -1,6 +1,7 @@
 # Friday Night Web
 
 Frontend do **Friday Night** — assistente pessoal de finanças, construído com **SvelteKit 5**, **TypeScript** e **TailwindCSS v4**.
+.
 
 ## Stack
 
@@ -35,10 +36,10 @@ docker compose up web
 
 ## Variáveis de ambiente
 
-| Variável | Descrição | Default |
-|----------|-----------|---------|
+| Variável       | Descrição                     | Default                        |
+| -------------- | ----------------------------- | ------------------------------ |
 | `API_BASE_URL` | URL base da API (server-side) | `http://localhost:8000/api/v1` |
-| `PORT` | Porta do servidor de produção | `3000` |
+| `PORT`         | Porta do servidor de produção | `3000`                         |
 
 ## Comandos
 
