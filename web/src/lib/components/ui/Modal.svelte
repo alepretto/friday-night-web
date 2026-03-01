@@ -9,9 +9,20 @@
 		onsave: () => void;
 		body: Snippet;
 		saving?: boolean;
+		saveLabel?: string;
+		saveStyle?: 'primary' | 'danger';
 	}
 
-	let { open, title, onclose, onsave, body, saving = false }: Props = $props();
+	let {
+		open,
+		title,
+		onclose,
+		onsave,
+		body,
+		saving = false,
+		saveLabel = 'Salvar',
+		saveStyle = 'primary'
+	}: Props = $props();
 </script>
 
 {#if open}
@@ -51,9 +62,12 @@
 				<button
 					onclick={onsave}
 					disabled={saving}
-					class="cursor-pointer rounded-3xl border border-blue-950 bg-friday-blue/80 px-10 py-2 shadow-2xl hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-50"
+					class="cursor-pointer rounded-3xl px-10 py-2 shadow-2xl disabled:cursor-not-allowed disabled:opacity-50
+						{saveStyle === 'danger'
+						? 'border border-failed/60 bg-failed/30 hover:bg-failed/50'
+						: 'border border-blue-950 bg-friday-blue/80 hover:bg-blue-700'}"
 				>
-					{saving ? 'Salvando...' : 'Salvar'}
+					{saving ? 'Salvando...' : saveLabel}
 				</button>
 			</footer>
 		</div>

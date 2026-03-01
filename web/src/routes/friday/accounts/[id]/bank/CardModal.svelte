@@ -48,33 +48,33 @@
 
 <Modal title="Novo Cartão" {open} {saving} {onclose} onsave={handleSave}>
 	{#snippet body()}
-		<div class="flex flex-col gap-4">
+		<div class="flex flex-col gap-6">
 			<div class="flex flex-col gap-1">
-				<label class="px-2 text-sm text-gray-400" for="card-label">Nome do cartão</label>
+				<label class="pl-1 text-sm text-gray-400" for="card-label">Nome do cartão</label>
 				<input
 					id="card-label"
 					type="text"
 					bind:value={label}
 					placeholder="Ex: Nubank Principal"
-					class="w-full rounded-xl bg-secondary/30 px-4 py-2 text-sm outline-none focus:ring-2 focus:ring-white/20"
+					class="w-full rounded-xl bg-white/10 px-4 py-2 text-white outline-none focus:ring-2 focus:ring-white/20"
 				/>
 			</div>
 
 			<div class="flex flex-col gap-1">
-				<label class="px-2 text-sm text-gray-400" for="card-flag">Bandeira</label>
+				<label class="pl-1 text-sm text-gray-400" for="card-flag">Bandeira</label>
 				<select
 					id="card-flag"
 					bind:value={flag}
-					class="w-full rounded-xl bg-secondary/30 px-4 py-2 text-sm outline-none focus:ring-2 focus:ring-white/20"
+					class="w-full rounded-xl bg-white/10 px-4 py-2 text-white outline-none focus:ring-2 focus:ring-white/20"
 				>
-					<option value="visa">Visa</option>
-					<option value="mastercard">Mastercard</option>
+					<option class="text-black" value="visa">Visa</option>
+					<option class="text-black" value="mastercard">Mastercard</option>
 				</select>
 			</div>
 
 			<div class="grid grid-cols-2 gap-4">
 				<div class="flex flex-col gap-1">
-					<label class="px-2 text-sm text-gray-400" for="card-close">Dia de Fechamento</label>
+					<label class="pl-1 text-sm text-gray-400" for="card-close">Dia de Fechamento</label>
 					<input
 						id="card-close"
 						type="number"
@@ -82,11 +82,11 @@
 						max="31"
 						bind:value={close_day}
 						placeholder="Ex: 15"
-						class="w-full rounded-xl bg-secondary/30 px-4 py-2 text-sm outline-none focus:ring-2 focus:ring-white/20"
+						class="w-full rounded-xl bg-white/10 px-4 py-2 text-white outline-none focus:ring-2 focus:ring-white/20"
 					/>
 				</div>
 				<div class="flex flex-col gap-1">
-					<label class="px-2 text-sm text-gray-400" for="card-due">Dia de Vencimento</label>
+					<label class="pl-1 text-sm text-gray-400" for="card-due">Dia de Vencimento</label>
 					<input
 						id="card-due"
 						type="number"
@@ -94,13 +94,13 @@
 						max="31"
 						bind:value={due_day}
 						placeholder="Ex: 22"
-						class="w-full rounded-xl bg-secondary/30 px-4 py-2 text-sm outline-none focus:ring-2 focus:ring-white/20"
+						class="w-full rounded-xl bg-white/10 px-4 py-2 text-white outline-none focus:ring-2 focus:ring-white/20"
 					/>
 				</div>
 			</div>
 
 			<div class="flex flex-col gap-1">
-				<label class="px-2 text-sm text-gray-400" for="card-limit">Limite (R$)</label>
+				<label class="pl-1 text-sm text-gray-400" for="card-limit">Limite (R$)</label>
 				<input
 					id="card-limit"
 					type="number"
@@ -108,7 +108,7 @@
 					step="0.01"
 					bind:value={limit}
 					placeholder="Ex: 5000.00"
-					class="w-full rounded-xl bg-secondary/30 px-4 py-2 text-sm outline-none focus:ring-2 focus:ring-white/20"
+					class="w-full rounded-xl bg-white/10 px-4 py-2 text-white outline-none focus:ring-2 focus:ring-white/20"
 				/>
 			</div>
 		</div>

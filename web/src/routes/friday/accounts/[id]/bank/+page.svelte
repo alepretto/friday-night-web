@@ -6,6 +6,7 @@
 	import CardsTable from './_components/CardsTable.svelte';
 	import TableTransactions from './_components/TableTransactions.svelte';
 	import CardModal from './CardModal.svelte';
+	import TransactionModal from './TransactionModal.svelte';
 	import LoadingSpinner from '$lib/components/ui/LoadingSpinner.svelte';
 	import Pagination from '$lib/components/ui/Pagination.svelte';
 	import { showToast } from '$lib/toast.svelte';
@@ -19,6 +20,9 @@
 			streamed: Promise<{
 				transactions: Transaction[];
 				cards: CardInfo[];
+				availableTags: { id: string; label: string; type: 'outcome' | 'income' }[];
+				availablePaymentMethods: { id: string; label: string }[];
+				currencyId: string;
 				pagination: { page: number; pages: number; total: number };
 			}>;
 		};
@@ -29,6 +33,9 @@
 	const streamed = useStreamedData(() => data.streamed);
 	const transactions = $derived<Transaction[]>(streamed.data?.transactions ?? []);
 	const cards = $derived<CardInfo[]>(streamed.data?.cards ?? []);
+	const availableTags = $derived(streamed.data?.availableTags ?? []);
+	const availablePaymentMethods = $derived(streamed.data?.availablePaymentMethods ?? []);
+	const currencyId = $derived(streamed.data?.currencyId ?? '');
 	const pagination = $derived(streamed.data?.pagination ?? { page: 1, pages: 1, total: 0 });
 
 	// Date filters (triggers server reload)
@@ -97,6 +104,37 @@
 		}
 	}
 
+	// Transaction modal
+	let transactionModalOpen = $state(false);
+	let savingTransaction = $state(false);
+
+	async function handleSaveTransaction(txData: {
+		tagId: string;
+		paymentMethodId: string;
+		value: string;
+		description: string;
+		dateTransaction: string;
+	}) {
+		savingTransaction = true;
+
+		const { success, error } = await submitAction('createTransaction', {
+			tagId: txData.tagId,
+			paymentMethodId: txData.paymentMethodId,
+			value: txData.value,
+			description: txData.description,
+			dateTransaction: txData.dateTransaction,
+			currencyId
+		});
+		savingTransaction = false;
+
+		if (success) {
+			transactionModalOpen = false;
+			showToast('Transação criada com sucesso!', 'success');
+		} else {
+			showToast(error ?? 'Erro ao criar transação', 'error');
+		}
+	}
+
 	// Delete card
 	async function handleDeleteCard(cardId: string) {
 		const { success, error } = await submitAction('deleteCard', { cardId });
@@ -116,13 +154,24 @@
 	onsave={handleSaveCard}
 />
 
+<TransactionModal
+	open={transactionModalOpen}
+	saving={savingTransaction}
+	onclose={() => (transactionModalOpen = false)}
+	onsave={handleSaveTransaction}
+	tags={availableTags}
+	paymentMethods={availablePaymentMethods}
+/>
+
 {#if streamed.isLoading}
 	<LoadingSpinner message="Carregando conta..." />
 {:else}
 	<main class="flex flex-col gap-5 text-white">
-		<div class="grid grid-cols-9 gap-15 pt-5">
-			<div class="col-span-2 flex flex-col justify-around gap-5">
-				<div class="flex justify-between px-3 py-5">
+		<div class="grid grid-cols-3 gap-10 pt-5">
+			<div class="col-span-1 flex flex-col justify-around gap-5">
+				<div
+					class="flex justify-between rounded-2xl border border-white/10 bg-secondary/30 px-5 py-6"
+				>
 					<div class="flex items-center gap-3">
 						<ReceiptIcon size={35} />
 						<span class="text-xl italic">Cartões</span>
@@ -131,7 +180,7 @@
 				</div>
 			</div>
 
-			<div class="col-span-7 flex flex-col gap-5 p-5">
+			<div class="col-span-2 flex flex-col gap-5 p-5">
 				<div class="flex items-center justify-between">
 					<h1 class="text-3xl font-bold">Cartões</h1>
 					<button
@@ -158,43 +207,45 @@
 			<div class="flex justify-between">
 				<h1 class="text-3xl font-bold">Transações</h1>
 				<button
-					class="cursor-pointer rounded-3xl border border-friday-blue/60 bg-friday-blue/40 px-10 py-3 transition-colors hover:bg-friday-blue"
+					onclick={() => (transactionModalOpen = true)}
+					disabled={savingTransaction}
+					class="cursor-pointer rounded-3xl border border-friday-blue/60 bg-friday-blue/40 px-10 py-3 transition-colors hover:bg-friday-blue disabled:opacity-50"
 				>
-					New Transaction
+					Nova Transação
 				</button>
 			</div>
 
-			<div class="flex flex-wrap items-end gap-5">
-				<!-- Date filters (server-side) -->
-				<div class="flex items-end gap-3">
+			<!-- Date filters (server-side) -->
+			<div class="flex flex-col gap-6">
+				<div class="flex items-end gap-4">
 					<div class="flex flex-col gap-1">
-						<label class="px-2 text-sm text-gray-400" for="date-start">Data início</label>
+						<label class="pl-1 text-sm text-gray-400" for="date-start">Data início</label>
 						<input
 							bind:value={dateStart}
-							class="rounded-xl bg-secondary/30 px-4 py-2 text-sm outline-none focus:ring-2 focus:ring-white/20"
+							class="min-w-44 rounded-xl bg-white/10 px-4 py-2 text-white outline-none focus:ring-2 focus:ring-white/20"
 							id="date-start"
 							type="date"
 						/>
 					</div>
 					<div class="flex flex-col gap-1">
-						<label class="px-2 text-sm text-gray-400" for="date-end">Data fim</label>
+						<label class="pl-1 text-sm text-gray-400" for="date-end">Data fim</label>
 						<input
 							bind:value={dateEnd}
-							class="rounded-xl bg-secondary/30 px-4 py-2 text-sm outline-none focus:ring-2 focus:ring-white/20"
+							class="min-w-44 rounded-xl bg-white/10 px-4 py-2 text-white outline-none focus:ring-2 focus:ring-white/20"
 							id="date-end"
 							type="date"
 						/>
 					</div>
 					<button
 						onclick={applyDateFilters}
-						class="cursor-pointer rounded-xl border border-white/20 bg-white/10 px-5 py-2 text-sm transition-colors hover:bg-white/20"
+						class="cursor-pointer rounded-xl border border-white/20 bg-white/10 px-5 py-2 transition-colors hover:bg-white/20"
 					>
 						Filtrar
 					</button>
 					{#if dateStart || dateEnd}
 						<button
 							onclick={clearFilters}
-							class="cursor-pointer rounded-xl border border-white/10 px-5 py-2 text-sm text-gray-400 transition-colors hover:bg-white/10"
+							class="cursor-pointer rounded-xl border border-white/10 px-5 py-2 text-gray-400 transition-colors hover:bg-white/10"
 						>
 							Limpar
 						</button>
@@ -202,42 +253,42 @@
 				</div>
 
 				<!-- Client-side filters -->
-				<div class="flex flex-1 gap-4">
+				<div class="grid grid-cols-3 gap-6">
 					<div class="flex flex-col gap-1">
-						<label class="px-2 text-sm text-gray-400" for="filter-category">Categoria</label>
+						<label class="pl-1 text-sm text-gray-400" for="filter-category">Categoria</label>
 						<select
 							bind:value={filterCategory}
-							class="rounded-xl bg-secondary/30 px-4 py-2 text-sm outline-none focus:ring-2 focus:ring-white/20"
+							class="w-full min-w-44 rounded-xl bg-white/10 px-4 py-2 text-white outline-none focus:ring-2 focus:ring-white/20"
 							id="filter-category"
 						>
-							<option value="">Todas</option>
+							<option class="text-black" value="">Todas</option>
 							{#each categories as cat (cat)}
-								<option value={cat}>{cat}</option>
+								<option class="text-black" value={cat}>{cat}</option>
 							{/each}
 						</select>
 					</div>
 					<div class="flex flex-col gap-1">
-						<label class="px-2 text-sm text-gray-400" for="filter-type">Tipo</label>
+						<label class="pl-1 text-sm text-gray-400" for="filter-type">Tipo</label>
 						<select
 							bind:value={filterType}
-							class="rounded-xl bg-secondary/30 px-4 py-2 text-sm outline-none focus:ring-2 focus:ring-white/20"
+							class="w-full min-w-44 rounded-xl bg-white/10 px-4 py-2 text-white outline-none focus:ring-2 focus:ring-white/20"
 							id="filter-type"
 						>
-							<option value="">Todos</option>
-							<option value="outcome">Saída</option>
-							<option value="income">Entrada</option>
+							<option class="text-black" value="">Todos</option>
+							<option class="text-black" value="outcome">Saída</option>
+							<option class="text-black" value="income">Entrada</option>
 						</select>
 					</div>
 					<div class="flex flex-col gap-1">
-						<label class="px-2 text-sm text-gray-400" for="filter-pm">Pagamento</label>
+						<label class="pl-1 text-sm text-gray-400" for="filter-pm">Pagamento</label>
 						<select
 							bind:value={filterPaymentMethod}
-							class="rounded-xl bg-secondary/30 px-4 py-2 text-sm outline-none focus:ring-2 focus:ring-white/20"
+							class="w-full min-w-44 rounded-xl bg-white/10 px-4 py-2 text-white outline-none focus:ring-2 focus:ring-white/20"
 							id="filter-pm"
 						>
-							<option value="">Todos</option>
+							<option class="text-black" value="">Todos</option>
 							{#each paymentMethods as pm (pm)}
-								<option value={pm}>{pm}</option>
+								<option class="text-black" value={pm}>{pm}</option>
 							{/each}
 						</select>
 					</div>
