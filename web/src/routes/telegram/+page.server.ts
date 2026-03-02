@@ -1,8 +1,57 @@
 import { fail, redirect } from '@sveltejs/kit';
-import type { Actions } from './$types';
-import { API_BASE_URL } from '$lib/server/api';
+import type { Actions, PageServerLoad } from './$types';
+import { API_BASE_URL, apiFetch } from '$lib/server/api';
+
+export const load: PageServerLoad = async ({ locals }) => {
+	const { token } = locals;
+
+	if (!token) {
+		return { accounts: [], accountTypes: [] };
+	}
+
+	try {
+		const [accountsRes, typesRes] = await Promise.all([
+			apiFetch('/api/v1/finance/accounts?size=100', token),
+			apiFetch('/api/v1/finance/accounts/types', token)
+		]);
+
+		const accountsData = accountsRes.ok ? await accountsRes.json() : { items: [] };
+		const typesData = typesRes.ok ? await typesRes.json() : { types: [] };
+
+		const accounts = (accountsData.items ?? []).map((acc: any) => ({
+			id: acc.id,
+			label: acc.label,
+			type: acc.type
+		}));
+
+		const accountTypes = (typesData.types ?? []).map((t: any) => ({
+			id: t,
+			label: t
+		}));
+
+		return { accounts, accountTypes };
+	} catch {
+		return { accounts: [], accountTypes: [] };
+	}
+};
 
 export const actions: Actions = {
+	selectAccount: async ({ request, cookies }) => {
+		const data = await request.formData();
+		const accountId = data.get('accountId') as string;
+		const init_data = data.get('init_data') as string;
+
+		if (!accountId || !init_data) {
+			return fail(400, { error: 'Dados inválidos' });
+		}
+
+		// Retornar dados para o frontend fazer o redirecionamento
+		return { 
+			redirectUrl: `/telegram/transaction?account_id=${accountId}`,
+			success: true 
+		};
+	},
+
 	auth: async ({ request, cookies }) => {
 		const data = await request.formData();
 		const init_data = data.get('init_data') as string;
@@ -40,7 +89,8 @@ export const actions: Actions = {
 			secure: true
 		});
 
-		throw redirect(303, '/telegram/transaction');
+		// Retornar sucesso em vez de redirecionar para permitir que o frontend mostre o seletor de contas
+		return { success: true };
 	},
 
 	link: async ({ request, cookies }) => {
@@ -101,6 +151,7 @@ export const actions: Actions = {
 			secure: true
 		});
 
-		throw redirect(303, '/telegram/transaction');
+		// Retornar sucesso em vez de redirecionar
+		return { success: true };
 	}
 };
