@@ -53,7 +53,7 @@
 	});
 </script>
 
-<div class="flex min-h-screen flex-col bg-[#0d0d0f] pt-10">
+<div class="flex min-h-screen flex-col bg-[#0d0d0f] pt-16">
 	<!-- Header -->
 	<div class="flex items-center gap-3 px-4 pb-5">
 		<img src="/logo-friday.png" alt="Friday Night" class="h-9 w-9 rounded-full" />
