@@ -9,51 +9,51 @@
 
 	let { form }: { form: ActionData } = $props();
 
+	type Stage = 'loading' | 'error' | 'needsLink';
+
+	let stage = $state<Stage>('loading');
+	let errorMessage = $state('');
 	let initData = $state('');
-	let autoSubmitting = $state(true);
-	let loading = $state(false);
-	let autoForm = $state<HTMLFormElement | null>(null);
+	let authForm: HTMLFormElement;
 
 	onMount(() => {
 		const tg = (window as any).Telegram?.WebApp;
 		if (tg?.initData) {
-			initData = tg.initData;
 			tg.ready();
+			initData = tg.initData;
+			// submit after the DOM updates with the initData value
+			setTimeout(() => authForm?.requestSubmit(), 0);
 		} else {
-			autoSubmitting = false;
+			errorMessage = 'Abra este app pelo Telegram.';
+			stage = 'error';
 		}
 	});
 
 	$effect(() => {
-		if (initData && autoSubmitting && autoForm) {
-			autoForm.requestSubmit();
+		if (!form) return;
+		if (form.needsLink) {
+			stage = 'needsLink';
+		} else if (form.error) {
+			errorMessage = form.error;
+			stage = 'error';
 		}
 	});
+
+	let linkLoading = $state(false);
 </script>
 
-{#if !initData && !autoSubmitting}
-	<div class="flex min-h-screen items-center justify-center p-6">
-		<div class="rounded-2xl border border-white/10 bg-secondary/30 p-6 text-center backdrop-blur-sm">
-			<p class="text-slate-400">Abra este app pelo Telegram.</p>
-		</div>
-	</div>
-{:else if autoSubmitting && !form?.needsLink}
-	<!-- Hidden auto-submit form for Telegram auth -->
-	<form
-		bind:this={autoForm as HTMLFormElement}
-		method="POST"
-		action="?/auth"
-		use:enhance={() => {
-			loading = true;
-			return async ({ update }) => {
-				loading = false;
-				await update();
-			};
-		}}
-	>
-		<input type="hidden" name="init_data" value={initData} />
-	</form>
+<!-- Hidden auto-submit form — always in DOM so bind:this is always valid -->
+<form
+	bind:this={authForm}
+	method="POST"
+	action="?/auth"
+	use:enhance
+	class="hidden"
+>
+	<input type="hidden" name="init_data" value={initData} />
+</form>
 
+{#if stage === 'loading'}
 	<div class="flex min-h-screen items-center justify-center">
 		<div class="flex flex-col items-center gap-4">
 			<div class="h-10 w-10 animate-spin rounded-full border-4 border-white/20 border-t-friday-blue">
@@ -61,8 +61,14 @@
 			<p class="text-sm text-slate-400">Autenticando...</p>
 		</div>
 	</div>
+{:else if stage === 'error'}
+	<div class="flex min-h-screen items-center justify-center p-6">
+		<div class="rounded-2xl border border-white/10 bg-secondary/30 p-6 text-center backdrop-blur-sm">
+			<p class="text-slate-400">{errorMessage}</p>
+		</div>
+	</div>
 {:else}
-	<!-- Link account form shown when Telegram ID is not linked yet -->
+	<!-- needsLink: show email + password form -->
 	<div class="flex min-h-screen items-center justify-center p-6">
 		<div class="w-full max-w-sm rounded-2xl border border-white/10 bg-secondary/30 p-6 backdrop-blur-sm">
 			<div class="mb-6 text-center">
@@ -81,9 +87,9 @@
 				method="POST"
 				action="?/link"
 				use:enhance={() => {
-					loading = true;
+					linkLoading = true;
 					return async ({ update }) => {
-						loading = false;
+						linkLoading = false;
 						await update();
 					};
 				}}
@@ -117,10 +123,10 @@
 
 				<button
 					type="submit"
-					disabled={loading}
+					disabled={linkLoading}
 					class="mt-1 w-full rounded-xl bg-friday-blue px-4 py-3 font-semibold text-white transition hover:opacity-90 disabled:opacity-50"
 				>
-					{loading ? 'Vinculando...' : 'Entrar e Vincular'}
+					{linkLoading ? 'Vinculando...' : 'Entrar e Vincular'}
 				</button>
 			</form>
 		</div>
