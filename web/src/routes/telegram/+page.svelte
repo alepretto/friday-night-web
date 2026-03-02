@@ -4,7 +4,7 @@
 
 <script lang="ts">
 	import { onMount } from 'svelte';
-	import { applyAction } from '$app/forms';
+	import { enhance } from '$app/forms';
 	import type { ActionData, PageData } from './$types';
 
 	let { form: initialForm, data }: { form: ActionData | undefined; data: PageData } = $props();
@@ -78,21 +78,24 @@
 
 <!-- Hidden auto-submit form -->
 <form bind:this={authForm} method="POST" action="?/auth" use:enhance={() => {
-	return async ({ update }) => {
-		const result = await update();
-		// Atualizar o stage manualmente baseado no resultado
-		if (result?.type === 'success') {
-			if (result.data?.success) {
+	return async ({ result, update }) => {
+		// Atualizar o stage manualmente baseado no resultado ANTES do update
+		if (result.type === 'success') {
+			if ((result.data as any)?.success) {
 				stage = 'selectAccount';
 			}
-		} else if (result?.type === 'error') {
-			if (result.data?.needsLink) {
+		} else if (result.type === 'failure') {
+			if ((result.data as any)?.needsLink) {
 				stage = 'needsLink';
-			} else if (result.data?.error) {
-				errorMessage = result.data.error;
+			} else if ((result.data as any)?.error) {
+				errorMessage = (result.data as any).error;
 				stage = 'error';
 			}
+		} else if (result.type === 'error') {
+			errorMessage = result.error?.message ?? 'Erro desconhecido';
+			stage = 'error';
 		}
+		await update({ reset: false });
 	};
 }} class="hidden">
 	<input type="hidden" name="init_data" value={initData} />
