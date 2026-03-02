@@ -5,11 +5,12 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
 
-	let { form, data }: { form: ActionData; data: PageData } = $props();
+	let { form: initialForm, data }: { form: ActionData | undefined; data: PageData } = $props();
 
 	type Stage = 'loading' | 'error' | 'needsLink' | 'selectAccount';
 
 	let stage = $state<Stage>('loading');
+	let form = $state(initialForm ?? {});
 	let errorMessage = $state('');
 	let initData = $state('');
 	let authForm: HTMLFormElement;
@@ -34,13 +35,16 @@
 	});
 
 	$effect(() => {
-		if (!form) return;
-		if (form.needsLink) {
+		const formSuccess = form?.success;
+		const formError = form?.error;
+		const formNeedsLink = form?.needsLink;
+		
+		if (formNeedsLink) {
 			stage = 'needsLink';
-		} else if (form.error) {
-			errorMessage = form.error;
+		} else if (formError) {
+			errorMessage = formError;
 			stage = 'error';
-		} else if (form.success) {
+		} else if (formSuccess) {
 			// Autenticação bem-sucedida - mostrar seletor de contas
 			stage = 'selectAccount';
 		}
@@ -71,7 +75,11 @@
 </script>
 
 <!-- Hidden auto-submit form -->
-<form bind:this={authForm} method="POST" action="?/auth" use:enhance class="hidden">
+<form bind:this={authForm} method="POST" action="?/auth" use:enhance={() => {
+	return async ({ update }) => {
+		await update();
+	};
+}} class="hidden">
 	<input type="hidden" name="init_data" value={initData} />
 </form>
 
