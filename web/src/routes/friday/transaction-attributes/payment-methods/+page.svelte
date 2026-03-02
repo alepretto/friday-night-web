@@ -98,50 +98,45 @@
 		onsave={handleSave}
 	/>
 
-	<section>
-		<div class="flex items-center justify-end p-10">
-			<div class="flex flex-col items-end gap-1">
-				{#if createError}
-					<p class="text-sm text-failed">{createError}</p>
-				{/if}
+	<!-- Action bar -->
+	<div class="mb-6 flex justify-end">
+		<button
+			onclick={() => (createOpen = true)}
+			disabled={saving}
+			class="rounded-lg bg-success px-4 py-2 text-sm font-semibold text-white transition hover:bg-success/90 disabled:opacity-50"
+		>
+			New Method
+		</button>
+	</div>
+
+	<!-- Grid -->
+	<div class="grid grid-cols-2 gap-3 lg:grid-cols-3 xl:grid-cols-4">
+		{#each streamed.data!.methods as method (method.id)}
+			<div
+				class="flex items-center justify-between rounded-xl border bg-white/[0.03] px-4 py-4 transition-colors
+					{method.active
+					? 'border-success/25 hover:border-success/40'
+					: 'border-white/8 hover:border-white/15'}"
+			>
+				<div class="flex items-center gap-3 min-w-0">
+					<div class="h-2 w-2 shrink-0 rounded-full {method.active ? 'bg-success' : 'bg-failed'}"></div>
+					<span class="truncate text-sm font-medium text-white/80">{method.label}</span>
+				</div>
 				<button
-					onclick={() => (createOpen = true)}
-					disabled={saving}
-					class="cursor-pointer rounded-3xl border border-success/60 bg-success/40 px-10 py-3 transition-colors hover:bg-success disabled:opacity-50"
+					onclick={() => askToggle(method as PaymentMethod)}
+					disabled={toggling}
+					class="ml-3 shrink-0 transition disabled:opacity-40 {method.active
+						? 'text-white/25 hover:text-friday-red'
+						: 'text-white/25 hover:text-success'}"
+					title={method.active ? 'Desativar' : 'Ativar'}
 				>
-					New Payment Method
+					{#if method.active}
+						<CircleSlash size={16} />
+					{:else}
+						<CircleCheck size={16} />
+					{/if}
 				</button>
 			</div>
-		</div>
-
-		<div class="grid grid-cols-4 gap-10 px-10">
-			{#each streamed.data!.methods as method (method.id)}
-				<div
-					class="flex h-25 items-center justify-around rounded-2xl border-2 bg-secondary/30 px-2 shadow-2xl {method.active
-						? 'border-success/30'
-						: 'border-failed/30'}"
-				>
-					<div class="w-full pl-5 text-[20px] font-bold">{method.label}</div>
-					<div class="flex shrink-0 items-center justify-between gap-10">
-						<div
-							class="h-5 w-5 rounded-full {method.active ? 'bg-success' : 'bg-friday-red'}"
-						></div>
-						<button
-							onclick={() => askToggle(method as PaymentMethod)}
-							disabled={toggling}
-							class="w-10 cursor-pointer disabled:opacity-40 {method.active
-								? 'text-friday-red'
-								: 'text-success'}"
-						>
-							{#if method.active}
-								<CircleSlash size={30} />
-							{:else}
-								<CircleCheck size={30} />
-							{/if}
-						</button>
-					</div>
-				</div>
-			{/each}
-		</div>
-	</section>
+		{/each}
+	</div>
 {/if}

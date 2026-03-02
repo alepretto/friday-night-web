@@ -33,8 +33,8 @@
 	];
 
 	const typeBadge = {
-		fiat: 'bg-friday-blue/50 border-blue-600 text-white',
-		crypto: 'bg-failed/60 border border-red-900 text-red-200'
+		fiat: 'bg-friday-blue/15 text-friday-blue border-friday-blue/30',
+		crypto: 'bg-friday-orange/15 text-friday-orange border-friday-orange/30'
 	};
 
 	const currentPage = $derived(streamed.data?.pagination?.page ?? 1);
@@ -126,54 +126,45 @@
 		/>
 	{/if}
 
-	<section>
-		<div class="flex items-center justify-end p-10">
-			<div class="flex flex-col items-end gap-1">
-				{#if createError}
-					<p class="text-sm text-failed">{createError}</p>
-				{/if}
-				<button
-					onclick={() => (createOpen = true)}
-					disabled={createSaving}
-					class="cursor-pointer rounded-3xl border border-success/60 bg-success/40 px-10 py-3 transition-colors hover:bg-success disabled:opacity-50"
+	<!-- Action bar -->
+	<div class="mb-4 flex justify-end">
+		<button
+			onclick={() => (createOpen = true)}
+			disabled={createSaving}
+			class="rounded-lg bg-success px-4 py-2 text-sm font-semibold text-white transition hover:bg-success/90 disabled:opacity-50"
+		>
+			New Currency
+		</button>
+	</div>
+
+	<!-- Table -->
+	<Table data={streamed.data!.currencies} {columns} rowKey="id">
+		{#snippet cell({ row, key })}
+			{#if key === 'type'}
+				<span
+					class="inline-block rounded-full border px-4 py-0.5 text-xs font-semibold {typeBadge[
+						row.type as CurrencyType
+					]}"
 				>
-					New Currency
+					{row.type === 'fiat' ? 'Fiat' : 'Cripto'}
+				</span>
+			{:else if key === 'actions'}
+				<button
+					onclick={() => openEdit(row as Currency)}
+					class="text-white/30 transition hover:text-friday-orange"
+					title="Editar"
+				>
+					<SlidersHorizontal size={16} />
 				</button>
-			</div>
-		</div>
+			{:else if key === 'id'}
+				<span class="font-mono text-xs text-white/25">{(row[key as keyof Currency] as string).slice(0, 8)}…</span>
+			{:else}
+				{row[key as keyof Currency]}
+			{/if}
+		{/snippet}
+	</Table>
 
-		<div class="flex flex-col items-center justify-center font-sans">
-			<div class="w-full max-w-7xl">
-				<Table data={streamed.data!.currencies} {columns} rowKey="id">
-					{#snippet cell({ row, key })}
-						{#if key === 'type'}
-							<span
-								class="inline-block rounded-full border px-5 py-1 text-sm font-semibold {typeBadge[
-									row.type as CurrencyType
-								]}"
-							>
-								{row.type}
-							</span>
-						{:else if key === 'actions'}
-							<button
-								onclick={() => openEdit(row as Currency)}
-								class="cursor-pointer text-friday-orange"
-								title="Editar"
-							>
-								<SlidersHorizontal size={25} />
-							</button>
-						{:else if key === 'id'}
-							<span class="font-mono text-xs text-gray-400"
-								>{(row[key as keyof Currency] as string).slice(0, 8)}…</span
-							>
-						{:else}
-							{row[key as keyof Currency]}
-						{/if}
-					{/snippet}
-				</Table>
-			</div>
-
-			<Pagination {currentPage} {totalPages} />
-		</div>
-	</section>
+	<div class="mt-4 flex justify-center">
+		<Pagination {currentPage} {totalPages} />
+	</div>
 {/if}
