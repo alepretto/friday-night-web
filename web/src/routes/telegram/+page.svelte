@@ -4,6 +4,8 @@
 
 <script lang="ts">
 	import { onMount } from 'svelte';
+	import { applyAction } from '$app/forms';
+	import type { ActionData, PageData } from './$types';
 
 	let { form: initialForm, data }: { form: ActionData | undefined; data: PageData } = $props();
 
@@ -77,7 +79,20 @@
 <!-- Hidden auto-submit form -->
 <form bind:this={authForm} method="POST" action="?/auth" use:enhance={() => {
 	return async ({ update }) => {
-		await update();
+		const result = await update();
+		// Atualizar o stage manualmente baseado no resultado
+		if (result?.type === 'success') {
+			if (result.data?.success) {
+				stage = 'selectAccount';
+			}
+		} else if (result?.type === 'error') {
+			if (result.data?.needsLink) {
+				stage = 'needsLink';
+			} else if (result.data?.error) {
+				errorMessage = result.data.error;
+				stage = 'error';
+			}
+		}
 	};
 }} class="hidden">
 	<input type="hidden" name="init_data" value={initData} />
