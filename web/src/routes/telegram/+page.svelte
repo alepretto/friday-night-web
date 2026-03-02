@@ -21,7 +21,6 @@
 		if (tg?.initData) {
 			tg.ready();
 			initData = tg.initData;
-			// submit after the DOM updates with the initData value
 			setTimeout(() => authForm?.requestSubmit(), 0);
 		} else {
 			errorMessage = 'Abra este app pelo Telegram.';
@@ -42,43 +41,41 @@
 	let linkLoading = $state(false);
 </script>
 
-<!-- Hidden auto-submit form — always in DOM so bind:this is always valid -->
-<form
-	bind:this={authForm}
-	method="POST"
-	action="?/auth"
-	use:enhance
-	class="hidden"
->
+<!-- Hidden auto-submit form -->
+<form bind:this={authForm} method="POST" action="?/auth" use:enhance class="hidden">
 	<input type="hidden" name="init_data" value={initData} />
 </form>
 
 {#if stage === 'loading'}
 	<div class="flex min-h-screen items-center justify-center">
 		<div class="flex flex-col items-center gap-4">
-			<div class="h-10 w-10 animate-spin rounded-full border-4 border-white/20 border-t-friday-blue">
-			</div>
-			<p class="text-sm text-slate-400">Autenticando...</p>
+			<div
+				class="h-8 w-8 animate-spin rounded-full border-2 border-white/10 border-t-friday-blue"
+			></div>
+			<p class="text-xs uppercase tracking-widest text-white/30">Autenticando</p>
 		</div>
 	</div>
 {:else if stage === 'error'}
 	<div class="flex min-h-screen items-center justify-center p-6">
-		<div class="rounded-2xl border border-white/10 bg-secondary/30 p-6 text-center backdrop-blur-sm">
-			<p class="text-slate-400">{errorMessage}</p>
+		<div class="rounded-2xl border border-white/10 bg-white/5 p-6 text-center">
+			<p class="text-sm text-white/50">{errorMessage}</p>
 		</div>
 	</div>
 {:else}
-	<!-- needsLink: show email + password form -->
-	<div class="flex min-h-screen items-center justify-center p-6">
-		<div class="w-full max-w-sm rounded-2xl border border-white/10 bg-secondary/30 p-6 backdrop-blur-sm">
-			<div class="mb-6 text-center">
-				<img src="/logo-friday.png" alt="Friday Night" class="mx-auto mb-3 h-14 w-14 rounded-full" />
-				<h1 class="text-2xl font-extrabold tracking-wide text-secondary italic">Friday Night</h1>
-				<p class="mt-1 text-sm text-slate-400">Vincule sua conta para continuar</p>
+	<!-- needsLink: vincular conta -->
+	<div
+		class="flex min-h-screen items-center justify-center p-6"
+		style="padding-top: max(5rem, calc(var(--tg-safe-area-inset-top, 0px) + 2rem))"
+	>
+		<div class="w-full max-w-sm">
+			<div class="mb-8 text-center">
+				<img src="/logo-friday.png" alt="Friday Night" class="mx-auto mb-4 h-12 w-12 rounded-full opacity-90" />
+				<h1 class="text-xl font-semibold text-white">Friday Night</h1>
+				<p class="mt-1.5 text-sm text-white/40">Vincule sua conta para continuar</p>
 			</div>
 
 			{#if form?.error}
-				<div class="mb-4 rounded-xl bg-failed/20 px-4 py-3 text-sm text-failed">
+				<div class="mb-5 rounded-xl border border-failed/20 bg-failed/10 px-4 py-3 text-sm text-failed">
 					{form.error}
 				</div>
 			{/if}
@@ -98,33 +95,37 @@
 				<input type="hidden" name="init_data" value={initData} />
 
 				<div class="flex flex-col gap-1.5">
-					<label class="pl-1 text-sm text-slate-400" for="email">Email</label>
+					<label class="text-xs font-medium uppercase tracking-wider text-white/40" for="email">
+						Email
+					</label>
 					<input
 						id="email"
 						name="email"
 						type="email"
 						required
-						class="w-full rounded-xl bg-white/10 px-4 py-3 text-white outline-none placeholder:text-slate-500 focus:ring-2 focus:ring-white/20"
 						placeholder="seu@email.com"
+						class="w-full rounded-xl border border-white/10 bg-white/5 px-4 py-3 text-sm text-white placeholder:text-white/20 outline-none focus:border-white/25"
 					/>
 				</div>
 
 				<div class="flex flex-col gap-1.5">
-					<label class="pl-1 text-sm text-slate-400" for="password">Senha</label>
+					<label class="text-xs font-medium uppercase tracking-wider text-white/40" for="password">
+						Senha
+					</label>
 					<input
 						id="password"
 						name="password"
 						type="password"
 						required
-						class="w-full rounded-xl bg-white/10 px-4 py-3 text-white outline-none placeholder:text-slate-500 focus:ring-2 focus:ring-white/20"
 						placeholder="••••••••"
+						class="w-full rounded-xl border border-white/10 bg-white/5 px-4 py-3 text-sm text-white placeholder:text-white/20 outline-none focus:border-white/25"
 					/>
 				</div>
 
 				<button
 					type="submit"
 					disabled={linkLoading}
-					class="mt-1 w-full rounded-xl bg-friday-blue px-4 py-3 font-semibold text-white transition hover:opacity-90 disabled:opacity-50"
+					class="mt-2 w-full rounded-2xl bg-friday-blue py-4 text-sm font-semibold tracking-wide text-white transition hover:opacity-90 disabled:opacity-40"
 				>
 					{linkLoading ? 'Vinculando...' : 'Entrar e Vincular'}
 				</button>

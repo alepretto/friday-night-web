@@ -11,31 +11,83 @@
 	let activeTab = $state<Tab>('transaction');
 	let transactionType = $state<TransactionType>('outcome');
 
-	// Transaction form
-	let selectedTagId = $state('');
+	// Cascade category selectors
+	let selectedCategoryId = $state('');
+	let selectedSubcategoryId = $state('');
+	let selectedCardId = $state('');
 	let selectedPaymentMethodId = $state('');
 	let selectedCurrencyId = $state(data.defaultCurrencyId);
-	let selectedAccountId = $state(data.accounts[0]?.id ?? '');
 	let value = $state('');
 	let description = $state('');
 	let dateTransaction = $state('');
 	let loading = $state(false);
 
-	// Tag form
 	let newCategoryLabel = $state('');
 	let newSubcategoryLabel = $state('');
 	let tagLoading = $state(false);
 
+	type ActiveTag = (typeof data.activeTags)[number];
+	type ActivePm = (typeof data.activePaymentMethods)[number];
+
+	// Tags filtered by transaction type
 	const filteredTags = $derived(
-		data.activeTags.filter((tag: (typeof data.activeTags)[number]) => tag.type === transactionType)
+		data.activeTags.filter((tag: ActiveTag) => tag.type === transactionType)
 	);
+
+	// Unique categories from filtered tags
+	const categories = $derived(() => {
+		const map = new Map<string, string>();
+		for (const tag of filteredTags) {
+			map.set(tag.categoryId, tag.categoryLabel);
+		}
+		return [...map.entries()].map(([id, label]) => ({ id, label }));
+	});
+
+	// Subcategories filtered by selected category
+	const subcategories = $derived(() => {
+		const map = new Map<string, string>();
+		for (const tag of filteredTags) {
+			if (tag.categoryId === selectedCategoryId) {
+				map.set(tag.subcategoryId, tag.subcategoryLabel);
+			}
+		}
+		return [...map.entries()].map(([id, label]) => ({ id, label }));
+	});
+
+	// Resolve tag ID from category + subcategory
+	const resolvedTagId = $derived(() => {
+		const tag = filteredTags.find(
+			(t: ActiveTag) => t.categoryId === selectedCategoryId && t.subcategoryId === selectedSubcategoryId
+		);
+		return tag?.id ?? '';
+	});
+
+	// Credit card detection
+	const selectedPmLabel = $derived(
+		data.activePaymentMethods.find((pm: ActivePm) => pm.id === selectedPaymentMethodId)?.label ?? ''
+	);
+	const isCreditCard = $derived(selectedPmLabel.toLowerCase().includes('cartão de crédito'));
+
+	// Reset subcategory when category or type changes
+	$effect(() => {
+		selectedCategoryId;
+		transactionType;
+		selectedSubcategoryId = '';
+	});
+
+	// Reset card when payment method is not credit card
+	$effect(() => {
+		if (!isCreditCard) selectedCardId = '';
+	});
 
 	$effect(() => {
 		if (form?.success) {
 			showToast('Transação registrada!', 'success');
 			value = '';
 			description = '';
-			selectedTagId = '';
+			selectedCategoryId = '';
+			selectedSubcategoryId = '';
+			selectedCardId = '';
 		} else if (form?.tagCreated) {
 			showToast('Tag criada!', 'success');
 			newCategoryLabel = '';
@@ -47,309 +99,357 @@
 			showToast(form.error, 'error');
 		}
 	});
-
-	$effect(() => {
-		selectedTagId = '';
-	});
 </script>
 
-<div class="flex min-h-screen flex-col bg-[#0d0d0f] pt-16">
-	<!-- Header -->
-	<div class="flex items-center gap-3 px-4 pb-5">
-		<img src="/logo-friday.png" alt="Friday Night" class="h-9 w-9 rounded-full" />
-		<h1 class="text-xl font-extrabold tracking-wide text-secondary italic">Friday Night</h1>
-	</div>
+<!-- Sub-tabs -->
+<div class="flex border-b border-white/10 px-5">
+	<button
+		type="button"
+		onclick={() => (activeTab = 'transaction')}
+		class="pb-3 pr-7 text-sm font-medium transition-colors
+			{activeTab === 'transaction'
+			? 'border-b-2 border-friday-blue text-white'
+			: 'text-white/30 hover:text-white/50'}"
+	>
+		Transação
+	</button>
+	<button
+		type="button"
+		onclick={() => (activeTab = 'tag')}
+		class="pb-3 pr-7 text-sm font-medium transition-colors
+			{activeTab === 'tag'
+			? 'border-b-2 border-friday-blue text-white'
+			: 'text-white/30 hover:text-white/50'}"
+	>
+		Nova tag
+	</button>
+</div>
 
-	<!-- Tab bar -->
-	<div class="flex border-b border-white/10 px-4">
-		<button
-			type="button"
-			onclick={() => (activeTab = 'transaction')}
-			class="pb-3 pr-6 text-sm font-semibold transition-all
-				{activeTab === 'transaction'
-				? 'border-b-2 border-friday-blue text-white'
-				: 'text-slate-500 hover:text-slate-300'}"
-		>
-			Transação
-		</button>
-		<button
-			type="button"
-			onclick={() => (activeTab = 'tag')}
-			class="pb-3 pr-6 text-sm font-semibold transition-all
-				{activeTab === 'tag'
-				? 'border-b-2 border-friday-blue text-white'
-				: 'text-slate-500 hover:text-slate-300'}"
-		>
-			Nova Tag
-		</button>
-	</div>
+<!-- Tab: Transação -->
+{#if activeTab === 'transaction'}
+	<div class="flex flex-col gap-5 p-5">
+		<!-- Type selector -->
+		<div class="grid grid-cols-2 gap-3">
+			<button
+				type="button"
+				onclick={() => (transactionType = 'outcome')}
+				class="flex flex-col items-center gap-2 rounded-2xl border py-5 transition-all
+					{transactionType === 'outcome'
+					? 'border-failed/40 bg-failed/10 text-failed'
+					: 'border-white/10 bg-white/[0.03] text-white/25 hover:text-white/40'}"
+			>
+				<span class="text-xl leading-none">↓</span>
+				<span class="text-xs font-semibold uppercase tracking-widest">Saída</span>
+			</button>
+			<button
+				type="button"
+				onclick={() => (transactionType = 'income')}
+				class="flex flex-col items-center gap-2 rounded-2xl border py-5 transition-all
+					{transactionType === 'income'
+					? 'border-success/40 bg-success/10 text-success'
+					: 'border-white/10 bg-white/[0.03] text-white/25 hover:text-white/40'}"
+			>
+				<span class="text-xl leading-none">↑</span>
+				<span class="text-xs font-semibold uppercase tracking-widest">Entrada</span>
+			</button>
+		</div>
 
-	<!-- Tab: Transação -->
-	{#if activeTab === 'transaction'}
-		<div class="flex flex-col p-4 pb-8">
-			<!-- Type toggle -->
-			<div class="mb-5 mt-1 flex rounded-xl bg-white/5 p-1">
-				<button
-					type="button"
-					onclick={() => (transactionType = 'outcome')}
-					class="flex-1 rounded-lg py-2.5 text-sm font-semibold transition-all
-						{transactionType === 'outcome'
-						? 'bg-failed text-white shadow'
-						: 'text-slate-400 hover:text-slate-300'}"
+		<form
+			method="POST"
+			action="?/createTransaction"
+			use:enhance={() => {
+				loading = true;
+				return async ({ update }) => {
+					loading = false;
+					await update({ reset: false });
+				};
+			}}
+			class="flex flex-col gap-4"
+		>
+			<!-- Hidden fields -->
+			<input type="hidden" name="accountId" value={data.selectedAccountId} />
+			<input type="hidden" name="tagId" value={resolvedTagId()} />
+
+			<!-- Categoria (cascade step 1) -->
+			<div class="flex flex-col gap-1.5">
+				<div class="flex items-center justify-between">
+					<label class="text-xs font-medium uppercase tracking-wider text-white/40" for="categoryId">
+						Categoria
+					</label>
+					<button
+						type="button"
+						onclick={() => (activeTab = 'tag')}
+						class="text-xs text-friday-blue transition hover:opacity-70"
+					>
+						+ nova tag
+					</button>
+				</div>
+				<select
+					id="categoryId"
+					bind:value={selectedCategoryId}
+					required
+					class="w-full rounded-xl border border-white/10 bg-white/5 px-4 py-3 text-sm text-white outline-none focus:border-white/25"
 				>
-					Saída
-				</button>
-				<button
-					type="button"
-					onclick={() => (transactionType = 'income')}
-					class="flex-1 rounded-lg py-2.5 text-sm font-semibold transition-all
-						{transactionType === 'income'
-						? 'bg-success text-white shadow'
-						: 'text-slate-400 hover:text-slate-300'}"
-				>
-					Entrada
-				</button>
+					<option value="" disabled>Selecionar categoria</option>
+					{#each categories() as cat}
+						<option value={cat.id}>{cat.label}</option>
+					{/each}
+				</select>
 			</div>
 
-			<form
-				method="POST"
-				action="?/createTransaction"
-				use:enhance={() => {
-					loading = true;
-					return async ({ update }) => {
-						loading = false;
-						await update({ reset: false });
-					};
-				}}
-				class="flex flex-col gap-4"
-			>
-				<!-- Account -->
+			<!-- Subcategoria (cascade step 2) -->
+			{#if selectedCategoryId}
 				<div class="flex flex-col gap-1.5">
-					<label class="pl-1 text-sm text-slate-400" for="accountId">Conta</label>
-					<select
-						id="accountId"
-						name="accountId"
-						bind:value={selectedAccountId}
-						required
-						class="w-full rounded-xl bg-white/10 px-4 py-3 text-white outline-none focus:ring-2 focus:ring-white/20"
-					>
-						<option value="" disabled>Selecionar conta</option>
-						{#each data.accounts as account}
-							<option value={account.id}>{account.label}</option>
-						{/each}
-					</select>
-				</div>
-
-				<!-- Tag -->
-				<div class="flex flex-col gap-1.5">
-					<div class="flex items-center justify-between pl-1">
-						<label class="text-sm text-slate-400" for="tagId">Categoria</label>
-						<button
-							type="button"
-							onclick={() => (activeTab = 'tag')}
-							class="text-xs text-friday-blue transition hover:opacity-80"
-						>
-							+ Nova tag
-						</button>
-					</div>
-					<select
-						id="tagId"
-						name="tagId"
-						bind:value={selectedTagId}
-						required
-						class="w-full rounded-xl bg-white/10 px-4 py-3 text-white outline-none focus:ring-2 focus:ring-white/20"
-					>
-						<option value="" disabled>Selecionar categoria</option>
-						{#each filteredTags as tag}
-							<option value={tag.id}>{tag.categoryLabel} — {tag.subcategoryLabel}</option>
-						{/each}
-					</select>
-				</div>
-
-				<!-- Payment method -->
-				<div class="flex flex-col gap-1.5">
-					<label class="pl-1 text-sm text-slate-400" for="paymentMethodId">
-						Método de Pagamento
+					<label class="text-xs font-medium uppercase tracking-wider text-white/40" for="subcategoryId">
+						Subcategoria
 					</label>
 					<select
-						id="paymentMethodId"
-						name="paymentMethodId"
-						bind:value={selectedPaymentMethodId}
+						id="subcategoryId"
+						bind:value={selectedSubcategoryId}
 						required
-						class="w-full rounded-xl bg-white/10 px-4 py-3 text-white outline-none focus:ring-2 focus:ring-white/20"
+						class="w-full rounded-xl border border-white/10 bg-white/5 px-4 py-3 text-sm text-white outline-none focus:border-white/25"
 					>
-						<option value="" disabled>Selecionar método</option>
-						{#each data.activePaymentMethods as pm}
-							<option value={pm.id}>{pm.label}</option>
+						<option value="" disabled>Selecionar subcategoria</option>
+						{#each subcategories() as sub}
+							<option value={sub.id}>{sub.label}</option>
+						{/each}
+					</select>
+				</div>
+			{/if}
+
+			<!-- Método de pagamento -->
+			<div class="flex flex-col gap-1.5">
+				<label
+					class="text-xs font-medium uppercase tracking-wider text-white/40"
+					for="paymentMethodId"
+				>
+					Método de pagamento
+				</label>
+				<select
+					id="paymentMethodId"
+					name="paymentMethodId"
+					bind:value={selectedPaymentMethodId}
+					required
+					class="w-full rounded-xl border border-white/10 bg-white/5 px-4 py-3 text-sm text-white outline-none focus:border-white/25"
+				>
+					<option value="" disabled>Selecionar método</option>
+					{#each data.activePaymentMethods as pm}
+						<option value={pm.id}>{pm.label}</option>
+					{/each}
+				</select>
+			</div>
+
+			<!-- Cartão (condicional: apenas quando crédito) -->
+			{#if isCreditCard && data.cards.length > 0}
+				<div class="flex flex-col gap-1.5">
+					<label class="text-xs font-medium uppercase tracking-wider text-white/40" for="cardId">
+						Cartão
+					</label>
+					<select
+						id="cardId"
+						name="cardId"
+						bind:value={selectedCardId}
+						class="w-full rounded-xl border border-white/10 bg-white/5 px-4 py-3 text-sm text-white outline-none focus:border-white/25"
+					>
+						<option value="">Sem cartão específico</option>
+						{#each data.cards as card}
+							<option value={card.id}>{card.label}</option>
+						{/each}
+					</select>
+				</div>
+			{/if}
+
+			<!-- Moeda + Valor -->
+			<div class="flex gap-3">
+				<div class="flex flex-col gap-1.5">
+					<label
+						class="text-xs font-medium uppercase tracking-wider text-white/40"
+						for="currencyId"
+					>
+						Moeda
+					</label>
+					<select
+						id="currencyId"
+						name="currencyId"
+						bind:value={selectedCurrencyId}
+						required
+						class="rounded-xl border border-white/10 bg-white/5 px-3 py-3 text-sm text-white outline-none focus:border-white/25"
+					>
+						{#each data.currencies as currency}
+							<option value={currency.id}>{currency.symbol}</option>
 						{/each}
 					</select>
 				</div>
 
-				<!-- Currency + Value -->
-				<div class="flex gap-3">
-					<div class="flex flex-col gap-1.5">
-						<label class="pl-1 text-sm text-slate-400" for="currencyId">Moeda</label>
-						<select
-							id="currencyId"
-							name="currencyId"
-							bind:value={selectedCurrencyId}
-							required
-							class="rounded-xl bg-white/10 px-3 py-3 text-white outline-none focus:ring-2 focus:ring-white/20"
-						>
-							{#each data.currencies as currency}
-								<option value={currency.id}>{currency.symbol}</option>
-							{/each}
-						</select>
-					</div>
+				<div class="flex flex-1 flex-col gap-1.5">
+					<label class="text-xs font-medium uppercase tracking-wider text-white/40" for="value">
+						Valor
+					</label>
+					<input
+						id="value"
+						name="value"
+						type="number"
+						step="0.01"
+						min="0"
+						bind:value
+						required
+						placeholder="0,00"
+						class="w-full rounded-xl border border-white/10 bg-white/5 px-4 py-3 text-sm text-white placeholder:text-white/20 outline-none focus:border-white/25"
+					/>
+				</div>
+			</div>
 
-					<div class="flex flex-1 flex-col gap-1.5">
-						<label class="pl-1 text-sm text-slate-400" for="value">Valor</label>
+			<!-- Data -->
+			<div class="flex flex-col gap-1.5">
+				<label
+					class="text-xs font-medium uppercase tracking-wider text-white/40"
+					for="dateTransaction"
+				>
+					Data
+				</label>
+				<input
+					id="dateTransaction"
+					name="dateTransaction"
+					type="datetime-local"
+					bind:value={dateTransaction}
+					class="w-full rounded-xl border border-white/10 bg-white/5 px-4 py-3 text-sm text-white outline-none focus:border-white/25"
+				/>
+			</div>
+
+			<!-- Descrição -->
+			<div class="flex flex-col gap-1.5">
+				<label
+					class="text-xs font-medium uppercase tracking-wider text-white/40"
+					for="description"
+				>
+					Descrição
+				</label>
+				<input
+					id="description"
+					name="description"
+					type="text"
+					bind:value={description}
+					placeholder="opcional"
+					class="w-full rounded-xl border border-white/10 bg-white/5 px-4 py-3 text-sm text-white placeholder:text-white/20 outline-none focus:border-white/25"
+				/>
+			</div>
+
+			<button
+				type="submit"
+				disabled={loading}
+				class="mt-1 w-full rounded-2xl py-4 text-sm font-semibold tracking-wide text-white transition disabled:opacity-40
+					{transactionType === 'income' ? 'bg-success hover:opacity-90' : 'bg-failed hover:opacity-90'}"
+			>
+				{loading
+					? 'Salvando...'
+					: transactionType === 'income'
+						? 'Registrar Entrada'
+						: 'Registrar Saída'}
+			</button>
+		</form>
+	</div>
+
+<!-- Tab: Nova Tag -->
+{:else}
+	<div class="flex flex-col gap-5 p-5">
+		<p class="text-sm text-white/40">Combine categoria e subcategoria para criar uma tag.</p>
+
+		<form
+			method="POST"
+			action="?/createTag"
+			use:enhance={() => {
+				tagLoading = true;
+				return async ({ update }) => {
+					tagLoading = false;
+					await update({ reset: false });
+				};
+			}}
+			class="flex flex-col gap-4"
+		>
+			<!-- Tipo da tag -->
+			<fieldset class="flex flex-col gap-1.5">
+				<legend class="text-xs font-medium uppercase tracking-wider text-white/40">Tipo</legend>
+				<div class="grid grid-cols-2 gap-3">
+					<label
+						class="flex cursor-pointer flex-col items-center gap-2 rounded-2xl border py-4 transition-all
+							{transactionType === 'outcome'
+							? 'border-failed/40 bg-failed/10 text-failed'
+							: 'border-white/10 bg-white/[0.03] text-white/25'}"
+					>
 						<input
-							id="value"
-							name="value"
-							type="number"
-							step="0.01"
-							min="0"
-							bind:value
-							required
-							class="w-full rounded-xl bg-white/10 px-4 py-3 text-white outline-none placeholder:text-slate-500 focus:ring-2 focus:ring-white/20"
-							placeholder="0.00"
+							type="radio"
+							name="tagType"
+							value="outcome"
+							bind:group={transactionType}
+							class="sr-only"
 						/>
-					</div>
-				</div>
-
-				<!-- Date -->
-				<div class="flex flex-col gap-1.5">
-					<label class="pl-1 text-sm text-slate-400" for="dateTransaction">Data</label>
-					<input
-						id="dateTransaction"
-						name="dateTransaction"
-						type="datetime-local"
-						bind:value={dateTransaction}
-						class="w-full rounded-xl bg-white/10 px-4 py-3 text-white outline-none focus:ring-2 focus:ring-white/20"
-					/>
-				</div>
-
-				<!-- Description -->
-				<div class="flex flex-col gap-1.5">
-					<label class="pl-1 text-sm text-slate-400" for="description">
-						Descrição (opcional)
+						<span class="text-xl leading-none">↓</span>
+						<span class="text-xs font-semibold uppercase tracking-widest">Saída</span>
 					</label>
-					<input
-						id="description"
-						name="description"
-						type="text"
-						bind:value={description}
-						class="w-full rounded-xl bg-white/10 px-4 py-3 text-white outline-none placeholder:text-slate-500 focus:ring-2 focus:ring-white/20"
-						placeholder="Ex: almoço com amigos"
-					/>
+					<label
+						class="flex cursor-pointer flex-col items-center gap-2 rounded-2xl border py-4 transition-all
+							{transactionType === 'income'
+							? 'border-success/40 bg-success/10 text-success'
+							: 'border-white/10 bg-white/[0.03] text-white/25'}"
+					>
+						<input
+							type="radio"
+							name="tagType"
+							value="income"
+							bind:group={transactionType}
+							class="sr-only"
+						/>
+						<span class="text-xl leading-none">↑</span>
+						<span class="text-xs font-semibold uppercase tracking-widest">Entrada</span>
+					</label>
 				</div>
+			</fieldset>
 
-				<button
-					type="submit"
-					disabled={loading}
-					class="mt-2 w-full rounded-xl px-4 py-4 text-base font-semibold text-white transition disabled:opacity-50
-						{transactionType === 'income'
-						? 'bg-success hover:opacity-90'
-						: 'bg-failed hover:opacity-90'}"
+			<!-- Categoria -->
+			<div class="flex flex-col gap-1.5">
+				<label
+					class="text-xs font-medium uppercase tracking-wider text-white/40"
+					for="categoryLabel"
 				>
-					{loading ? 'Salvando...' : 'Registrar Transação'}
-				</button>
-			</form>
-		</div>
+					Categoria
+				</label>
+				<input
+					id="categoryLabel"
+					name="categoryLabel"
+					type="text"
+					bind:value={newCategoryLabel}
+					required
+					placeholder="Ex: Alimentação"
+					class="w-full rounded-xl border border-white/10 bg-white/5 px-4 py-3 text-sm text-white placeholder:text-white/20 outline-none focus:border-white/25"
+				/>
+			</div>
 
-	<!-- Tab: Nova Tag -->
-	{:else}
-		<div class="flex flex-col p-4 pb-8">
-			<p class="mb-5 mt-1 text-sm text-slate-400">
-				Crie uma nova tag combinando categoria e subcategoria.
-			</p>
+			<!-- Subcategoria -->
+			<div class="flex flex-col gap-1.5">
+				<label
+					class="text-xs font-medium uppercase tracking-wider text-white/40"
+					for="subcategoryLabel"
+				>
+					Subcategoria
+				</label>
+				<input
+					id="subcategoryLabel"
+					name="subcategoryLabel"
+					type="text"
+					bind:value={newSubcategoryLabel}
+					required
+					placeholder="Ex: Restaurante"
+					class="w-full rounded-xl border border-white/10 bg-white/5 px-4 py-3 text-sm text-white placeholder:text-white/20 outline-none focus:border-white/25"
+				/>
+			</div>
 
-			<form
-				method="POST"
-				action="?/createTag"
-				use:enhance={() => {
-					tagLoading = true;
-					return async ({ update }) => {
-						tagLoading = false;
-						await update({ reset: false });
-					};
-				}}
-				class="flex flex-col gap-4"
+			<button
+				type="submit"
+				disabled={tagLoading}
+				class="mt-1 w-full rounded-2xl bg-friday-blue py-4 text-sm font-semibold tracking-wide text-white transition hover:opacity-90 disabled:opacity-40"
 			>
-				<!-- Tag type -->
-				<div class="flex flex-col gap-1.5">
-					<label class="pl-1 text-sm text-slate-400">Tipo</label>
-					<div class="flex rounded-xl bg-white/5 p-1">
-						<label
-							class="flex flex-1 cursor-pointer items-center justify-center rounded-lg py-2.5 text-sm font-semibold transition-all
-								{transactionType === 'outcome'
-								? 'bg-failed text-white shadow'
-								: 'text-slate-400'}"
-						>
-							<input
-								type="radio"
-								name="tagType"
-								value="outcome"
-								bind:group={transactionType}
-								class="sr-only"
-							/>
-							Saída
-						</label>
-						<label
-							class="flex flex-1 cursor-pointer items-center justify-center rounded-lg py-2.5 text-sm font-semibold transition-all
-								{transactionType === 'income'
-								? 'bg-success text-white shadow'
-								: 'text-slate-400'}"
-						>
-							<input
-								type="radio"
-								name="tagType"
-								value="income"
-								bind:group={transactionType}
-								class="sr-only"
-							/>
-							Entrada
-						</label>
-					</div>
-				</div>
-
-				<!-- Category -->
-				<div class="flex flex-col gap-1.5">
-					<label class="pl-1 text-sm text-slate-400" for="categoryLabel">Categoria</label>
-					<input
-						id="categoryLabel"
-						name="categoryLabel"
-						type="text"
-						bind:value={newCategoryLabel}
-						required
-						class="w-full rounded-xl bg-white/10 px-4 py-3 text-white outline-none placeholder:text-slate-500 focus:ring-2 focus:ring-white/20"
-						placeholder="Ex: Alimentação"
-					/>
-				</div>
-
-				<!-- Subcategory -->
-				<div class="flex flex-col gap-1.5">
-					<label class="pl-1 text-sm text-slate-400" for="subcategoryLabel">Subcategoria</label>
-					<input
-						id="subcategoryLabel"
-						name="subcategoryLabel"
-						type="text"
-						bind:value={newSubcategoryLabel}
-						required
-						class="w-full rounded-xl bg-white/10 px-4 py-3 text-white outline-none placeholder:text-slate-500 focus:ring-2 focus:ring-white/20"
-						placeholder="Ex: Restaurante"
-					/>
-				</div>
-
-				<button
-					type="submit"
-					disabled={tagLoading}
-					class="mt-2 w-full rounded-xl bg-friday-blue px-4 py-4 text-base font-semibold text-white transition hover:opacity-90 disabled:opacity-50"
-				>
-					{tagLoading ? 'Criando...' : 'Criar Tag'}
-				</button>
-			</form>
-		</div>
-	{/if}
-</div>
+				{tagLoading ? 'Criando...' : 'Criar Tag'}
+			</button>
+		</form>
+	</div>
+{/if}

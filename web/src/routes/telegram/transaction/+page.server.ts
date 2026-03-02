@@ -1,4 +1,4 @@
-import { fail, redirect } from '@sveltejs/kit';
+import { fail } from '@sveltejs/kit';
 import type { Actions, PageServerLoad } from './$types';
 import { apiFetch } from '$lib/server/api';
 
@@ -21,30 +21,31 @@ interface ApiCurrency {
 	label: string;
 }
 
-interface ApiAccount {
+interface ApiCard {
 	id: string;
-	type: string;
-	subtype: string | null;
-	financial_institution: { name: string } | null;
+	label: string;
 }
 
-export const load: PageServerLoad = async ({ locals }) => {
+export const load: PageServerLoad = async ({ locals, url, parent }) => {
 	const { token } = locals;
-	if (!token) throw redirect(303, '/login');
 
-	const [tagsRes, pmRes, currenciesRes, accountsRes] = await Promise.all([
+	const parentData = await parent();
+	const selectedAccountId =
+		url.searchParams.get('account_id') ?? parentData.accounts[0]?.id ?? '';
+
+	const [tagsRes, pmRes, currenciesRes, cardsRes] = await Promise.all([
 		apiFetch('/api/v1/finance/tags?size=100', token),
 		apiFetch('/api/v1/finance/payment-methods?size=100', token),
 		apiFetch('/api/v1/finance/currencies?size=100', token),
-		apiFetch('/api/v1/finance/accounts?size=100', token)
+		selectedAccountId
+			? apiFetch(`/api/v1/finance/cards?account_id=${selectedAccountId}&size=100`, token)
+			: Promise.resolve(new Response(JSON.stringify({ items: [] })))
 	]);
-
-	if (tagsRes.status === 401) throw redirect(303, '/login');
 
 	const tagsData = tagsRes.ok ? await tagsRes.json() : { items: [] };
 	const pmData = pmRes.ok ? await pmRes.json() : { items: [] };
 	const currenciesData = currenciesRes.ok ? await currenciesRes.json() : { items: [] };
-	const accountsData = accountsRes.ok ? await accountsRes.json() : { items: [] };
+	const cardsData = cardsRes.ok ? await cardsRes.json() : { items: [] };
 
 	const activeTags = (tagsData.items ?? [])
 		.filter((tag: ApiTag) => tag.active)
@@ -52,6 +53,7 @@ export const load: PageServerLoad = async ({ locals }) => {
 			id: tag.id,
 			categoryId: tag.category.id,
 			categoryLabel: tag.category.label,
+			subcategoryId: tag.subcategory.id,
 			subcategoryLabel: tag.subcategory.label,
 			type: tag.category.type as 'outcome' | 'income'
 		}));
@@ -66,27 +68,20 @@ export const load: PageServerLoad = async ({ locals }) => {
 		label: c.label
 	}));
 
-	const accounts = (accountsData.items ?? []).map((a: ApiAccount) => ({
-		id: a.id,
-		label: a.financial_institution?.name
-			? `${a.financial_institution.name} (${a.type})`
-			: a.type
+	const cards = (cardsData.items ?? []).map((c: ApiCard) => ({
+		id: c.id,
+		label: c.label
 	}));
 
 	const defaultCurrencyId =
-		currencies.find((c: { id: string; symbol: string; label: string }) => c.symbol === 'BRL')?.id ??
+		currencies.find((c: { id: string; symbol: string }) => c.symbol === 'BRL')?.id ??
 		currencies[0]?.id ??
 		'';
 
-	return { activeTags, activePaymentMethods, currencies, accounts, defaultCurrencyId };
+	return { activeTags, activePaymentMethods, currencies, cards, defaultCurrencyId, selectedAccountId };
 };
 
-async function getOrCreateCategory(
-	token: string,
-	label: string,
-	type: string
-): Promise<string> {
-	// Try to create; if 409 (already exists), fetch the list and find it
+async function getOrCreateCategory(token: string, label: string, type: string): Promise<string> {
 	const createRes = await apiFetch('/api/v1/finance/categories', token, {
 		method: 'POST',
 		body: JSON.stringify({ label, type })
@@ -120,6 +115,7 @@ export const actions: Actions = {
 
 		const accountId = data.get('accountId') as string;
 		const tagId = data.get('tagId') as string;
+		const cardId = data.get('cardId') as string;
 		const paymentMethodId = data.get('paymentMethodId') as string;
 		const currencyId = data.get('currencyId') as string;
 		const value = data.get('value') as string;
@@ -138,6 +134,7 @@ export const actions: Actions = {
 			value
 		};
 
+		if (cardId) body.card_id = cardId;
 		if (description?.trim()) body.description = description.trim();
 		if (dateTransaction) body.date_transaction = new Date(dateTransaction).toISOString();
 
