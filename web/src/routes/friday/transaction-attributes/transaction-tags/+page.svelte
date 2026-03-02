@@ -31,15 +31,15 @@
 	const columns: Column<Tag>[] = [
 		{ key: 'id', label: 'ID' },
 		{ key: 'category', label: 'Category', align: 'center' },
-		{ key: 'subcategory', label: 'Sub-Category', align: 'center' },
+		{ key: 'subcategory', label: 'Subcategory', align: 'center' },
 		{ key: 'type', label: 'Type', align: 'center' },
 		{ key: 'active', label: 'Active', align: 'center' },
 		{ key: 'actions', label: 'Actions', align: 'center' }
 	];
 
 	const typeBadge = {
-		outcome: 'border-failed bg-failed/50',
-		income: 'border-success bg-success/50'
+		outcome: 'bg-failed/20 text-red-300 border-failed/40',
+		income: 'bg-success/20 text-green-300 border-success/40'
 	};
 
 	// Filter state
@@ -62,7 +62,6 @@
 			: []
 	);
 
-	// Pagination
 	const currentPage = $derived(streamed.data?.pagination?.page ?? 1);
 	const totalPages = $derived(streamed.data?.pagination?.pages ?? 1);
 
@@ -206,123 +205,101 @@
 		}}
 	/>
 
-	<section>
-		<div class="flex items-center justify-between p-10">
-			<div class="flex w-full max-w-3xl gap-5">
-				<!-- Category filter -->
-				<div class="flex w-full flex-col gap-1">
-					<label class="px-2 text-sm text-gray-400" for="filter-category">Category</label>
-					<select
-						id="filter-category"
-						bind:value={filterCategory}
-						onchange={() => (filterSubcategory = '')}
-						class="w-full rounded-xl bg-secondary/30 px-4 py-2 text-sm outline-none focus:ring-2 focus:ring-white/20"
-					>
-						<option value="">Todos</option>
-						{#each streamed.data!.categories! as cat (cat.id)}
-							<option value={cat.id}>{cat.label}</option>
-						{/each}
-					</select>
-				</div>
+	<!-- Filters + action bar -->
+	<div class="mb-4 flex items-center justify-between gap-4">
+		<div class="flex flex-wrap gap-3">
+			<!-- Category filter -->
+			<select
+				bind:value={filterCategory}
+				onchange={() => (filterSubcategory = '')}
+				class="rounded-lg border border-white/10 bg-white/[0.04] px-3 py-2 text-sm text-white/70 outline-none transition focus:border-friday-blue/50 focus:text-white"
+			>
+				<option value="">Categoria</option>
+				{#each streamed.data!.categories! as cat (cat.id)}
+					<option value={cat.id}>{cat.label}</option>
+				{/each}
+			</select>
 
-				<!-- Subcategory filter -->
-				<div class="flex w-full flex-col gap-1">
-					<label class="px-2 text-sm text-gray-400" for="filter-subcategory">Subcategory</label>
-					<select
-						id="filter-subcategory"
-						bind:value={filterSubcategory}
-						disabled={!filterCategory}
-						class="w-full rounded-xl bg-secondary/30 px-4 py-2 text-sm outline-none focus:ring-2 focus:ring-white/20 disabled:cursor-not-allowed disabled:opacity-40"
-					>
-						<option value="">Todos</option>
-						{#each filterSubcategories as sub (sub.id)}
-							<option value={sub.id}>{sub.label}</option>
-						{/each}
-					</select>
-				</div>
+			<!-- Subcategory filter -->
+			<select
+				bind:value={filterSubcategory}
+				disabled={!filterCategory}
+				class="rounded-lg border border-white/10 bg-white/[0.04] px-3 py-2 text-sm text-white/70 outline-none transition focus:border-friday-blue/50 focus:text-white disabled:cursor-not-allowed disabled:opacity-40"
+			>
+				<option value="">Subcategoria</option>
+				{#each filterSubcategories as sub (sub.id)}
+					<option value={sub.id}>{sub.label}</option>
+				{/each}
+			</select>
 
-				<!-- Type filter -->
-				<div class="flex w-full flex-col gap-1">
-					<label class="px-2 text-sm text-gray-400" for="filter-type">Type</label>
-					<select
-						id="filter-type"
-						bind:value={filterType}
-						class="w-full rounded-xl bg-secondary/30 px-4 py-2 text-sm outline-none focus:ring-2 focus:ring-white/20"
-					>
-						<option value="">Todos</option>
-						<option value="outcome">Outcome</option>
-						<option value="income">Income</option>
-					</select>
-				</div>
-			</div>
+			<!-- Type filter -->
+			<select
+				bind:value={filterType}
+				class="rounded-lg border border-white/10 bg-white/[0.04] px-3 py-2 text-sm text-white/70 outline-none transition focus:border-friday-blue/50 focus:text-white"
+			>
+				<option value="">Tipo</option>
+				<option value="outcome">Outcome</option>
+				<option value="income">Income</option>
+			</select>
+		</div>
 
-			<div class="flex flex-col items-end gap-1">
-				{#if createError}
-					<p class="text-sm text-failed">{createError}</p>
-				{/if}
-				<button
-					onclick={() => (createOpen = true)}
-					disabled={saving}
-					class="cursor-pointer rounded-3xl border border-success/60 bg-success/40 px-10 py-3 transition-colors hover:bg-success disabled:opacity-50"
+		<button
+			onclick={() => (createOpen = true)}
+			disabled={saving}
+			class="rounded-lg bg-success px-4 py-2 text-sm font-semibold text-white transition hover:bg-success/90 disabled:opacity-50"
+		>
+			New Tag
+		</button>
+	</div>
+
+	<!-- Table -->
+	<Table data={filteredTags} {columns} rowKey="id">
+		{#snippet cell({ row, key })}
+			{#if key === 'type'}
+				<span
+					class="inline-block rounded-full border px-4 py-0.5 text-xs font-semibold {typeBadge[
+						row.type as keyof typeof typeBadge
+					]}"
 				>
-					New Tag
-				</button>
-			</div>
-		</div>
-
-		<div class="flex flex-col items-center justify-center">
-			<div class="w-full max-w-7xl">
-				<Table data={filteredTags} {columns} rowKey="id">
-					{#snippet cell({ row, key })}
-						{#if key === 'type'}
-							<div
-								class="m-auto max-w-30 rounded-2xl border p-1 font-bold {typeBadge[
-									row.type as keyof typeof typeBadge
-								]}"
-							>
-								{row[key]}
-							</div>
-						{:else if key === 'active'}
-							<div
-								class="m-auto h-4 w-4 rounded-full {row[key] ? 'bg-success' : 'bg-failed'}"
-							></div>
-						{:else if key === 'actions'}
-							<div class="flex justify-center gap-2">
-								<button
-									onclick={() => openEdit(row as Tag)}
-									class="cursor-pointer text-friday-orange"
-									title="Editar"
-								>
-									<SlidersHorizontal size={25} />
-								</button>
-
-								<button
-									onclick={() => askToggle(row as Tag)}
-									disabled={toggling}
-									class="cursor-pointer disabled:opacity-40 {row.active
-										? 'text-friday-red'
-										: 'text-success'}"
-									title={row.active ? 'Desativar' : 'Ativar'}
-								>
-									{#if row.active}
-										<CircleSlash size={25} />
-									{:else}
-										<CircleCheck size={25} />
-									{/if}
-								</button>
-							</div>
-						{:else if key === 'id'}
-							<span class="font-mono text-xs text-gray-400"
-								>{(row[key as keyof Tag] as string).slice(0, 8)}…</span
-							>
+					{row.type === 'outcome' ? 'Outcome' : 'Income'}
+				</span>
+			{:else if key === 'active'}
+				<div class="flex justify-center">
+					<div class="h-3 w-3 rounded-full {row[key] ? 'bg-success' : 'bg-failed'}"></div>
+				</div>
+			{:else if key === 'actions'}
+				<div class="flex justify-center gap-3">
+					<button
+						onclick={() => openEdit(row as Tag)}
+						class="text-white/30 transition hover:text-friday-orange"
+						title="Editar"
+					>
+						<SlidersHorizontal size={16} />
+					</button>
+					<button
+						onclick={() => askToggle(row as Tag)}
+						disabled={toggling}
+						class="transition disabled:opacity-40 {row.active
+							? 'text-white/30 hover:text-friday-red'
+							: 'text-white/30 hover:text-success'}"
+						title={row.active ? 'Desativar' : 'Ativar'}
+					>
+						{#if row.active}
+							<CircleSlash size={16} />
 						{:else}
-							{row[key as keyof Tag]}
+							<CircleCheck size={16} />
 						{/if}
-					{/snippet}
-				</Table>
-			</div>
+					</button>
+				</div>
+			{:else if key === 'id'}
+				<span class="font-mono text-xs text-white/25">{(row[key as keyof Tag] as string).slice(0, 8)}…</span>
+			{:else}
+				{row[key as keyof Tag]}
+			{/if}
+		{/snippet}
+	</Table>
 
-			<Pagination {currentPage} {totalPages} />
-		</div>
-	</section>
+	<div class="mt-4 flex justify-center">
+		<Pagination {currentPage} {totalPages} />
+	</div>
 {/if}

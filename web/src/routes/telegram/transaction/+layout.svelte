@@ -1,11 +1,14 @@
 <script lang="ts">
-	import { page } from '$app/state';
+	import { page, navigating } from '$app/state';
 	import { goto } from '$app/navigation';
+	import { PlusIcon, ClockIcon, BarChart2Icon, ChevronDownIcon } from 'lucide-svelte';
 	import type { LayoutData } from './$types';
 
 	let { data, children }: { data: LayoutData; children: import('svelte').Snippet } = $props();
 
 	const accountId = $derived(page.url.searchParams.get('account_id') ?? data.accounts[0]?.id ?? '');
+	type Account = (typeof data.accounts)[number];
+	const selectedAccount = $derived(data.accounts.find((a: Account) => a.id === accountId) ?? data.accounts[0]);
 
 	function buildUrl(tab: string, aid: string) {
 		return `/telegram/transaction${tab}?account_id=${aid}`;
@@ -19,9 +22,9 @@
 	}
 
 	const tabs = [
-		{ label: 'Nova', icon: '+', path: '' },
-		{ label: 'Recentes', icon: '≡', path: '/recentes' },
-		{ label: 'Resumo', icon: '◎', path: '/resumo' }
+		{ label: 'Nova', icon: PlusIcon, path: '' },
+		{ label: 'Recentes', icon: ClockIcon, path: '/recentes' },
+		{ label: 'Resumo', icon: BarChart2Icon, path: '/resumo' }
 	];
 
 	const activeTab = $derived(
@@ -33,43 +36,87 @@
 	);
 </script>
 
-<div
-	class="flex min-h-screen flex-col bg-[#0d0d0f]"
-	style="padding-top: max(3.5rem, calc(var(--tg-safe-area-inset-top, 0px) + 1rem))"
->
-	<!-- Account selector -->
-	<div class="flex items-center gap-3 border-b border-white/10 px-4 py-3">
-		<div class="flex min-w-0 flex-1 items-center gap-2">
-			<span class="text-white/40">○</span>
-			<select
-				value={accountId}
-				onchange={onAccountChange}
-				class="min-w-0 flex-1 truncate bg-transparent text-sm font-medium text-white outline-none"
-			>
-				{#each data.accounts as account}
-					<option value={account.id}>{account.label}</option>
-				{/each}
-			</select>
+<!--
+  O header fixo usa padding-top com as variáveis do Telegram:
+  - --tg-safe-area-inset-top: safe area do dispositivo (notch)
+  - --tg-content-safe-area-inset-top: espaço reservado para o botão fechar do Mini App
+  Fallback de 44px cobre a maioria dos casos onde essas variáveis ainda não estão disponíveis.
+-->
+<div class="flex h-screen flex-col bg-[#0d0d0f]">
+
+	<!-- Header fixo com safe area -->
+	<header
+		class="fixed left-0 right-0 top-0 z-40 border-b border-white/8 bg-[#0d0d0f]"
+		style="padding-top: calc(var(--tg-safe-area-inset-top, 0px) + var(--tg-content-safe-area-inset-top, 44px))"
+	>
+		<div class="flex items-center gap-3 px-4 py-3">
+			<!-- Logo + branding -->
+			<div class="flex flex-1 items-center gap-2 min-w-0">
+				<img src="/logo-friday.png" alt="Friday Night" class="h-6 w-6 shrink-0 rounded-full opacity-80" />
+				<span class="text-sm font-bold text-friday-blue">Friday Night</span>
+			</div>
+
+			<!-- Account selector pill -->
+			<div class="relative flex shrink-0 items-center">
+				<select
+					value={accountId}
+					onchange={onAccountChange}
+					class="appearance-none rounded-full border border-white/10 bg-white/[0.05] py-1.5 pl-3 pr-7 text-xs font-medium text-white/80 outline-none transition focus:border-friday-blue/40"
+					style="max-width: 160px"
+				>
+					{#each data.accounts as account}
+						<option value={account.id}>{account.label}</option>
+					{/each}
+				</select>
+				<ChevronDownIcon size={12} class="pointer-events-none absolute right-2 text-white/40" />
+			</div>
 		</div>
-		<span class="shrink-0 text-xs text-white/30">▾</span>
+	</header>
+
+	<!-- Spacer igual à altura do header (py-3 + h-6 icon + padding-top do safe area)
+	     O cálculo acompanha o header dinâmico -->
+	<div
+		style="height: calc(var(--tg-safe-area-inset-top, 0px) + var(--tg-content-safe-area-inset-top, 44px) + 3rem)"
+		class="shrink-0"
+	></div>
+
+	<!-- Scroll container -->
+	<div class="flex-1 overflow-y-auto pb-20">
+		<!-- Spinner de navegação entre abas -->
+		{#if navigating}
+			<div class="flex items-center justify-center py-16">
+				<div class="flex flex-col items-center gap-3">
+					<div class="h-7 w-7 animate-spin rounded-full border-2 border-white/10 border-t-friday-blue"></div>
+					<span class="text-xs text-white/30">Carregando...</span>
+				</div>
+			</div>
+		{:else}
+			{@render children()}
+		{/if}
 	</div>
 
-	<!-- Page content -->
-	<div class="flex-1 pb-20">
-		{@render children()}
-	</div>
-
-	<!-- Bottom navigation -->
-	<nav class="fixed bottom-0 left-0 right-0 z-50 border-t border-white/10 bg-[#0d0d0f]">
+	<!-- Bottom nav fixo -->
+	<nav
+		class="fixed bottom-0 left-0 right-0 z-40 border-t border-white/8 bg-[#0d0d0f]"
+		style="padding-bottom: var(--tg-safe-area-inset-bottom, 0px)"
+	>
 		<div class="grid grid-cols-3">
 			{#each tabs as tab}
+				{@const active = activeTab === tab.path}
 				<a
 					href={buildUrl(tab.path, accountId)}
 					class="flex flex-col items-center gap-1 py-3 text-center transition-colors
-						{activeTab === tab.path ? 'text-friday-blue' : 'text-white/30 hover:text-white/50'}"
+						{active ? 'text-friday-blue' : 'text-white/30'}"
 				>
-					<span class="text-lg leading-none">{tab.icon}</span>
-					<span class="text-[10px] font-medium uppercase tracking-widest">{tab.label}</span>
+					<div
+						class="flex h-7 w-7 items-center justify-center rounded-xl transition-colors
+							{active ? 'bg-friday-blue/15' : ''}"
+					>
+						<tab.icon size={16} />
+					</div>
+					<span class="text-[10px] font-medium tracking-wider {active ? 'text-friday-blue' : 'text-white/25'}">
+						{tab.label}
+					</span>
 				</a>
 			{/each}
 		</div>

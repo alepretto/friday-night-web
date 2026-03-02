@@ -20,7 +20,7 @@
 	let { children } = $props();
 	const toast = getToastState();
 
-	let sidebarOpen = $state(false);
+	let sidebarOpen = $state(true);
 
 	const navItems = [
 		{ label: 'Dashboard', icon: LayoutDashboardIcon, route: '/friday/dashboard' },
@@ -36,39 +36,42 @@
 
 <div class="flex h-screen w-screen flex-col overflow-hidden">
 	<!-- HEADER -->
-	<header class="flex h-20 shrink-0 items-center gap-3 border-b bg-secondary/30 px-4">
+	<header class="flex h-14 shrink-0 items-center gap-3 border-b border-white/8 bg-primary px-4">
 		<button
 			onclick={() => (sidebarOpen = !sidebarOpen)}
-			class="flex items-center rounded-md px-5 text-slate-400 transition hover:bg-white/5 hover:text-blue-400"
+			class="flex h-8 w-8 items-center justify-center rounded-md text-white/40 transition hover:bg-white/5 hover:text-white/70"
 		>
-			<MenuIcon size={32} />
+			<MenuIcon size={20} />
 		</button>
 
-		<span class="flex-1 text-4xl font-extrabold tracking-wide text-secondary italic">
+		<span class="flex-1 text-xl font-bold tracking-tight text-friday-blue">
 			Friday Night
 		</span>
 
-		<img src="/logo-friday.png" alt="Friday Night" class="h-10 w-10 rounded-full" />
+		<img src="/logo-friday.png" alt="Friday Night" class="h-8 w-8 rounded-full opacity-80" />
 	</header>
 
 	<div class="flex flex-1 overflow-hidden">
 		<!-- SIDEBAR -->
 		<aside
-			class="flex shrink-0 flex-col justify-between overflow-hidden border-r bg-secondary/30 px-2 py-3 transition-all duration-200
-				{sidebarOpen ? 'w-60' : 'w-20'}"
+			class="flex shrink-0 flex-col justify-between overflow-hidden border-r border-white/8 bg-primary px-2 py-4 transition-all duration-200
+				{sidebarOpen ? 'w-56' : 'w-14'}"
 		>
 			<!-- Top nav -->
-			<nav class="flex flex-col items-center gap-5 pt-5">
+			<nav class="flex flex-col gap-1">
 				{#each navItems as item}
+					{@const active = page.url.pathname.startsWith(item.route)}
 					<button
 						onclick={() => goto(resolve(item.route))}
 						title={!sidebarOpen ? item.label : ''}
-						class="flex w-full items-center gap-5 rounded-lg px-2.5 py-2 text-base font-medium transition-all
-							{page.url.pathname.startsWith(item.route)
-							? 'text-secondary-400 bg-white/80'
-							: 'text-slate-300 hover:bg-white/4 hover:text-slate-300'}"
+						class="flex w-full items-center gap-3 rounded-lg px-2.5 py-2 text-sm font-medium transition-all
+							{active
+							? 'bg-friday-blue/12 text-friday-blue'
+							: 'text-white/40 hover:bg-white/5 hover:text-white/70'}"
 					>
-						<span class="shrink-0"><item.icon size={25} /></span>
+						<span class="shrink-0 {active ? 'text-friday-blue' : ''}">
+							<item.icon size={18} />
+						</span>
 						{#if sidebarOpen}
 							<span class="truncate">{item.label}</span>
 						{/if}
@@ -77,17 +80,18 @@
 			</nav>
 
 			<!-- Bottom nav -->
-			<nav class="flex flex-col gap-0.5">
+			<nav class="flex flex-col gap-1">
 				{#each bottomItems as item}
+					{@const active = page.url.pathname.startsWith(item.route)}
 					<button
 						onclick={() => goto(resolve(item.route))}
 						title={!sidebarOpen ? item.label : ''}
-						class="text-md flex w-full items-center gap-5 rounded-lg px-2.5 py-2 font-medium transition-all
-							{page.url.pathname.startsWith(item.route)
-							? 'text-secondary-400 bg-white/80'
-							: 'text-slate-300 hover:bg-white/4 hover:text-slate-300'}"
+						class="flex w-full items-center gap-3 rounded-lg px-2.5 py-2 text-sm font-medium transition-all
+							{active
+							? 'bg-friday-blue/12 text-friday-blue'
+							: 'text-white/40 hover:bg-white/5 hover:text-white/70'}"
 					>
-						<span class="shrink-0"><item.icon size={25} /></span>
+						<span class="shrink-0"><item.icon size={18} /></span>
 						{#if sidebarOpen}
 							<span class="truncate">{item.label}</span>
 						{/if}
@@ -98,9 +102,9 @@
 					<button
 						type="submit"
 						title={!sidebarOpen ? 'Logout' : ''}
-						class="text-md flex w-full items-center gap-5 rounded-lg px-2.5 py-2 font-medium text-slate-300 transition-all hover:bg-white/4 hover:text-slate-300"
+						class="flex w-full items-center gap-3 rounded-lg px-2.5 py-2 text-sm font-medium text-white/40 transition-all hover:bg-white/5 hover:text-white/70"
 					>
-						<span class="shrink-0"><LogOutIcon size={25} /></span>
+						<span class="shrink-0"><LogOutIcon size={18} /></span>
 						{#if sidebarOpen}
 							<span class="truncate">Logout</span>
 						{/if}
@@ -114,10 +118,8 @@
 			{#if navigating?.to?.url.pathname.startsWith('/friday/accounts/')}
 				<div class="absolute inset-0 z-10 flex items-center justify-center bg-[#0d0d0f]">
 					<div class="flex flex-col items-center gap-4">
-						<div
-							class="h-10 w-10 animate-spin rounded-full border-4 border-white/20 border-t-white"
-						></div>
-						<p class="text-sm text-gray-400">Carregando...</p>
+						<div class="h-8 w-8 animate-spin rounded-full border-2 border-white/10 border-t-friday-blue"></div>
+						<p class="text-sm text-white/30">Carregando...</p>
 					</div>
 				</div>
 			{/if}
