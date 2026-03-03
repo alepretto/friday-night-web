@@ -1,5 +1,5 @@
-import type { PageServerLoad } from './$types';
-import { apiFetch } from '$lib/server/api';
+import type { PageLoad } from './$types';
+import { API_BASE_URL } from '$lib/api';
 
 interface ApiTransaction {
 	id: string;
@@ -21,11 +21,10 @@ interface ApiPaymentMethod {
 	label: string;
 }
 
-export const load: PageServerLoad = async ({ locals, url, parent }) => {
-	const { token } = locals;
+export const load: PageLoad = async ({ fetch, url, parent }) => {
+	const { token, accounts } = await parent();
 
-	const parentData = await parent();
-	const accountId = url.searchParams.get('account_id') ?? parentData.accounts[0]?.id ?? '';
+	const accountId = url.searchParams.get('account_id') ?? accounts[0]?.id ?? '';
 
 	if (!accountId) return { transactions: [] };
 
@@ -33,13 +32,15 @@ export const load: PageServerLoad = async ({ locals, url, parent }) => {
 	const dateStart = new Date(now.getFullYear(), now.getMonth(), 1).toISOString().slice(0, 10);
 	const dateEnd = new Date(now.getFullYear(), now.getMonth() + 1, 0).toISOString().slice(0, 10);
 
+	const headers = { Authorization: `Bearer ${token}` };
+
 	const [transactionsRes, tagsRes, pmRes] = await Promise.all([
-		apiFetch(
-			`/api/v1/finance/transactions?account_id=${accountId}&date_start=${encodeURIComponent(dateStart + 'T00:00:00')}&date_end=${encodeURIComponent(dateEnd + 'T23:59:59')}&page=1&size=30`,
-			token
+		fetch(
+			`${API_BASE_URL}/api/v1/finance/transactions?account_id=${accountId}&date_start=${encodeURIComponent(dateStart + 'T00:00:00')}&date_end=${encodeURIComponent(dateEnd + 'T23:59:59')}&page=1&size=30`,
+			{ headers }
 		),
-		apiFetch('/api/v1/finance/tags?size=100', token),
-		apiFetch('/api/v1/finance/payment-methods?size=100', token)
+		fetch(`${API_BASE_URL}/api/v1/finance/tags?size=100`, { headers }),
+		fetch(`${API_BASE_URL}/api/v1/finance/payment-methods?size=100`, { headers })
 	]);
 
 	const transactionsData = transactionsRes.ok ? await transactionsRes.json() : { items: [] };

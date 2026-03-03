@@ -1,5 +1,5 @@
-import type { PageServerLoad } from './$types';
-import { apiFetch } from '$lib/server/api';
+import type { PageLoad } from './$types';
+import { API_BASE_URL } from '$lib/api';
 
 interface ApiSummary {
 	total_income: string;
@@ -15,11 +15,10 @@ interface ApiSummary {
 	}[];
 }
 
-export const load: PageServerLoad = async ({ locals, url, parent }) => {
-	const { token } = locals;
+export const load: PageLoad = async ({ fetch, url, parent }) => {
+	const { token, accounts } = await parent();
 
-	const parentData = await parent();
-	const accountId = url.searchParams.get('account_id') ?? parentData.accounts[0]?.id ?? '';
+	const accountId = url.searchParams.get('account_id') ?? accounts[0]?.id ?? '';
 
 	if (!accountId) {
 		return {
@@ -35,25 +34,22 @@ export const load: PageServerLoad = async ({ locals, url, parent }) => {
 	}
 
 	const now = new Date();
-
-	// Current month range
 	const curStart = new Date(now.getFullYear(), now.getMonth(), 1);
 	const curEnd = new Date(now.getFullYear(), now.getMonth() + 1, 0);
-
-	// Previous month range
 	const prevStart = new Date(now.getFullYear(), now.getMonth() - 1, 1);
 	const prevEnd = new Date(now.getFullYear(), now.getMonth(), 0);
-
 	const fmt = (d: Date) => d.toISOString().slice(0, 10);
 
+	const headers = { Authorization: `Bearer ${token}` };
+
 	const [curRes, prevRes] = await Promise.all([
-		apiFetch(
-			`/api/v1/finance/transactions/summary?account_id=${accountId}&date_start=${encodeURIComponent(fmt(curStart) + 'T00:00:00')}&date_end=${encodeURIComponent(fmt(curEnd) + 'T23:59:59')}`,
-			token
+		fetch(
+			`${API_BASE_URL}/api/v1/finance/transactions/summary?account_id=${accountId}&date_start=${encodeURIComponent(fmt(curStart) + 'T00:00:00')}&date_end=${encodeURIComponent(fmt(curEnd) + 'T23:59:59')}`,
+			{ headers }
 		),
-		apiFetch(
-			`/api/v1/finance/transactions/summary?account_id=${accountId}&date_start=${encodeURIComponent(fmt(prevStart) + 'T00:00:00')}&date_end=${encodeURIComponent(fmt(prevEnd) + 'T23:59:59')}`,
-			token
+		fetch(
+			`${API_BASE_URL}/api/v1/finance/transactions/summary?account_id=${accountId}&date_start=${encodeURIComponent(fmt(prevStart) + 'T00:00:00')}&date_end=${encodeURIComponent(fmt(prevEnd) + 'T23:59:59')}`,
+			{ headers }
 		)
 	]);
 
@@ -76,7 +72,6 @@ export const load: PageServerLoad = async ({ locals, url, parent }) => {
 	const deltaPercent =
 		gastoPrevMes > 0 ? ((gastoMes - gastoPrevMes) / gastoPrevMes) * 100 : null;
 
-	// Top 5 categories by spending (outcome only)
 	const topCategorias = curSummary.by_category
 		.filter((c) => c.category_type === 'outcome')
 		.sort((a, b) => parseFloat(b.total) - parseFloat(a.total))
