@@ -91,17 +91,10 @@
 
 	<!-- Scroll container -->
 	<div class="flex-1 overflow-y-auto pb-20">
-		<!-- Spinner de navegação entre abas -->
 		{#if navigating}
-			<div class="flex items-center justify-center py-16">
-				<div class="flex flex-col items-center gap-3">
-					<div class="h-7 w-7 animate-spin rounded-full border-2 border-white/10 border-t-friday-blue"></div>
-					<span class="text-xs text-white/30">Carregando...</span>
-				</div>
-			</div>
-		{:else}
-			{@render children()}
+			<div class="mx-4 mt-3 h-0.5 animate-pulse rounded-full bg-friday-blue/50"></div>
 		{/if}
+		{@render children()}
 	</div>
 
 	<!-- Bottom nav fixo -->
@@ -114,6 +107,7 @@
 				{@const active = activeTab === tab.path}
 				<a
 					href={buildUrl(tab.path, accountId)}
+					data-sveltekit-preload-data="tap"
 					class="flex flex-col items-center gap-1 py-3 text-center transition-colors
 						{active ? 'text-friday-blue' : 'text-white/30'}"
 				>
