@@ -8,8 +8,12 @@
 	let { data, children }: { data: LayoutData; children: import('svelte').Snippet } = $props();
 
 	const accountId = $derived(page.url.searchParams.get('account_id') ?? data.accounts[0]?.id ?? '');
-	type Account = (typeof data.accounts)[number];
-	const selectedAccount = $derived(data.accounts.find((a: Account) => a.id === accountId) ?? data.accounts[0]);
+
+	// Feedback visual instantâneo: pendingTab ativa visualmente antes dos dados chegarem
+	let pendingTab = $state<string | null>(null);
+	$effect(() => {
+		if (!navigating) pendingTab = null;
+	});
 
 	function buildUrl(tab: string, aid: string) {
 		return `/telegram/transaction${tab}?account_id=${aid}`;
@@ -36,6 +40,8 @@
 				: ''
 	);
 
+	const visualActiveTab = $derived(pendingTab ?? activeTab);
+
 	onMount(() => {
 		const tg = (window as any).Telegram?.WebApp;
 		if (tg) {
@@ -53,9 +59,9 @@
 -->
 <div class="flex h-screen flex-col bg-[#0d0d0f]">
 
-	<!-- Header fixo com safe area -->
+	<!-- Header fixo com safe area; border-b muda de cor enquanto navega -->
 	<header
-		class="fixed left-0 right-0 top-0 z-40 border-b border-white/8 bg-[#0d0d0f]"
+		class="fixed left-0 right-0 top-0 z-40 border-b bg-[#0d0d0f] {navigating ? 'border-friday-blue/50' : 'border-white/8'}"
 		style="padding-top: calc(var(--tg-safe-area-inset-top, 0px) + var(--tg-content-safe-area-inset-top, 44px))"
 	>
 		<div class="flex items-center gap-3 px-4 py-3">
@@ -66,19 +72,21 @@
 			</div>
 
 			<!-- Account selector pill -->
-			<div class="relative flex shrink-0 items-center">
-				<select
-					value={accountId}
-					onchange={onAccountChange}
-					class="appearance-none rounded-full border border-white/10 bg-white/[0.05] py-1.5 pl-3 pr-7 text-xs font-medium text-white/80 outline-none transition focus:border-friday-blue/40"
-					style="max-width: 160px"
-				>
-					{#each data.accounts as account}
-						<option value={account.id}>{account.label}</option>
-					{/each}
-				</select>
-				<ChevronDownIcon size={12} class="pointer-events-none absolute right-2 text-white/40" />
-			</div>
+			{#if data.accounts.length > 0}
+				<div class="relative flex shrink-0 items-center">
+					<select
+						value={accountId}
+						onchange={onAccountChange}
+						class="appearance-none rounded-full border border-white/10 bg-white/[0.05] py-1.5 pl-3 pr-7 text-xs font-medium text-white/80 outline-none transition focus:border-friday-blue/40"
+						style="max-width: 160px"
+					>
+						{#each data.accounts as account}
+							<option value={account.id}>{account.label}</option>
+						{/each}
+					</select>
+					<ChevronDownIcon size={12} class="pointer-events-none absolute right-2 text-white/40" />
+				</div>
+			{/if}
 		</div>
 	</header>
 
@@ -91,9 +99,6 @@
 
 	<!-- Scroll container -->
 	<div class="flex-1 overflow-y-auto pb-20">
-		{#if navigating}
-			<div class="mx-4 mt-3 h-0.5 animate-pulse rounded-full bg-friday-blue/50"></div>
-		{/if}
 		{@render children()}
 	</div>
 
@@ -104,10 +109,11 @@
 	>
 		<div class="grid grid-cols-3">
 			{#each tabs as tab}
-				{@const active = activeTab === tab.path}
+				{@const active = visualActiveTab === tab.path}
 				<a
 					href={buildUrl(tab.path, accountId)}
 					data-sveltekit-preload-data="tap"
+					onclick={() => { pendingTab = tab.path; }}
 					class="flex flex-col items-center gap-1 py-3 text-center transition-colors
 						{active ? 'text-friday-blue' : 'text-white/30'}"
 				>
