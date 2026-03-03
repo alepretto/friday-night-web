@@ -25,8 +25,8 @@ export const load: PageServerLoad = async ({ locals }) => {
 		}));
 
 		const accountTypes = (typesData.types ?? []).map((t: any) => ({
-			id: t,
-			label: t
+			id: t.id,
+			label: t.label
 		}));
 
 		return { accounts, accountTypes };
