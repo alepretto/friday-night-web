@@ -9,10 +9,26 @@
 
 	const accountId = $derived(page.url.searchParams.get('account_id') ?? data.accounts[0]?.id ?? '');
 
-	// Feedback visual instantâneo: pendingTab ativa visualmente antes dos dados chegarem
+	// Feedback visual instantâneo
 	let pendingTab = $state<string | null>(null);
+
+	// Limpa pendingTab quando a URL muda (navegação completa), não depende de navigating
 	$effect(() => {
-		if (!navigating) pendingTab = null;
+		page.url.pathname; // dependency tracking
+		pendingTab = null;
+	});
+
+	// Mede a altura real do header para o conteúdo não ser coberto
+	let headerEl = $state<HTMLElement | null>(null);
+	let headerH = $state(90); // valor inicial estimado para evitar flash
+
+	$effect(() => {
+		if (!headerEl) return;
+		const ro = new ResizeObserver(() => {
+			headerH = headerEl!.offsetHeight;
+		});
+		ro.observe(headerEl);
+		return () => ro.disconnect();
 	});
 
 	function buildUrl(tab: string, aid: string) {
@@ -52,33 +68,37 @@
 </script>
 
 <!--
-  O header fixo usa padding-top com as variáveis do Telegram:
-  - --tg-safe-area-inset-top: safe area do dispositivo (notch)
-  - --tg-content-safe-area-inset-top: espaço reservado para o botão fechar do Mini App
-  Fallback de 44px cobre a maioria dos casos onde essas variáveis ainda não estão disponíveis.
+  Header fixo + padding-top dinâmico no conteúdo (medido via ResizeObserver).
+  Elimina o h-screen flex-col que era impreciso no WebView do Telegram.
+  O padding-top é atualizado automaticamente se o header crescer (mudança de CSS vars do Telegram).
 -->
-<div class="flex h-screen flex-col bg-[#0d0d0f]">
-
-	<!-- Header em flow normal do flex-col: não precisa de spacer, sem timing issues -->
+<div class="bg-[#0d0d0f]">
+	<!-- Header fixo: z-40, altura variável conforme safe-area do Telegram -->
 	<header
-		class="shrink-0 z-40 border-b bg-[#0d0d0f] {navigating ? 'border-friday-blue/50' : 'border-white/8'}"
+		bind:this={headerEl}
+		class="fixed left-0 right-0 top-0 z-40 border-b bg-[#0d0d0f] {navigating
+			? 'border-friday-blue/50'
+			: 'border-white/8'}"
 		style="padding-top: calc(var(--tg-safe-area-inset-top, 0px) + var(--tg-content-safe-area-inset-top, 44px))"
 	>
 		<div class="flex items-center gap-3 px-4 py-3">
 			<!-- Logo + branding -->
-			<div class="flex flex-1 items-center gap-2 min-w-0">
-				<img src="/logo-friday.png" alt="Friday Night" class="h-6 w-6 shrink-0 rounded-full opacity-80" />
+			<div class="flex min-w-0 flex-1 items-center gap-2">
+				<img
+					src="/logo-friday.png"
+					alt="Friday Night"
+					class="h-6 w-6 shrink-0 rounded-full opacity-80"
+				/>
 				<span class="text-sm font-bold text-friday-blue">Friday Night</span>
 			</div>
 
-			<!-- Account selector pill -->
+			<!-- Account selector: sem disabled — sempre interativo -->
 			{#if data.accounts.length > 0}
 				<div class="relative flex shrink-0 items-center">
 					<select
 						value={accountId}
 						onchange={onAccountChange}
-						disabled={!!navigating}
-					class="appearance-none rounded-full border border-white/10 bg-white/[0.05] py-1.5 pl-3 pr-7 text-xs font-medium text-white/80 outline-none transition focus:border-friday-blue/40 disabled:opacity-40"
+						class="appearance-none rounded-full border border-white/10 bg-white/[0.05] py-1.5 pl-3 pr-7 text-xs font-medium text-white/80 outline-none transition focus:border-friday-blue/40"
 						style="max-width: 160px"
 					>
 						{#each data.accounts as account}
@@ -91,8 +111,10 @@
 		</div>
 	</header>
 
-	<!-- Scroll container -->
-	<div class="flex-1 overflow-y-auto pb-20">
+	<!-- Conteúdo: padding-top = altura real do header (ResizeObserver), padding-bottom = nav + safe area -->
+	<div
+		style="padding-top: {headerH}px; padding-bottom: calc(var(--tg-safe-area-inset-bottom, 0px) + 64px)"
+	>
 		{@render children()}
 	</div>
 
@@ -107,7 +129,9 @@
 				<a
 					href={buildUrl(tab.path, accountId)}
 					data-sveltekit-preload-data="tap"
-					onclick={() => { pendingTab = tab.path; }}
+					onclick={() => {
+						pendingTab = tab.path;
+					}}
 					class="flex flex-col items-center gap-1 py-3 text-center transition-colors
 						{active ? 'text-friday-blue' : 'text-white/30'}"
 				>
@@ -117,7 +141,11 @@
 					>
 						<tab.icon size={16} />
 					</div>
-					<span class="text-[10px] font-medium tracking-wider {active ? 'text-friday-blue' : 'text-white/25'}">
+					<span
+						class="text-[10px] font-medium tracking-wider {active
+							? 'text-friday-blue'
+							: 'text-white/25'}"
+					>
 						{tab.label}
 					</span>
 				</a>
