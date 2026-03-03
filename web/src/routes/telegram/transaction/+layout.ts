@@ -138,10 +138,31 @@ export const load: LayoutLoad = async ({ fetch, url, parent }) => {
 	const institutionMap = new Map<string, string>(
 		(institutionsData.items ?? []).map((inst: ApiInstitution) => [inst.id, inst.name])
 	);
-	const accounts = (accountsData.items ?? []).map((a: ApiAccount) => {
+	// Conta quantas contas existem por instituição para desambiguar (ex: BTG Conta vs BTG Invest.)
+	const rawAccounts: ApiAccount[] = accountsData.items ?? [];
+	const institutionCounts = new Map<string, number>();
+	for (const a of rawAccounts) {
+		const key = institutionMap.get(a.financial_institution_id) ?? a.type;
+		institutionCounts.set(key, (institutionCounts.get(key) ?? 0) + 1);
+	}
+	const typeLabel: Record<string, string> = {
+		bank: 'Conta',
+		investment: 'Invest.',
+		cash: 'Cash',
+		benefit: 'Benef.'
+	};
+	const accounts = rawAccounts.map((a: ApiAccount) => {
 		const instName = institutionMap.get(a.financial_institution_id);
 		const base = instName ?? a.type;
-		return { id: a.id, label: a.subtype ? `${base} (${a.subtype})` : base, type: a.type };
+		let label: string;
+		if (a.subtype) {
+			label = `${base} (${a.subtype})`;
+		} else if ((institutionCounts.get(base) ?? 0) > 1) {
+			label = `${base} — ${typeLabel[a.type] ?? a.type}`;
+		} else {
+			label = base;
+		}
+		return { id: a.id, label, type: a.type };
 	});
 	const selectedAccountId = accountId || accounts[0]?.id || '';
 
