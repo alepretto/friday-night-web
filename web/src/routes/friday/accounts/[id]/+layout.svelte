@@ -3,10 +3,8 @@
 	import { ArrowLeftIcon } from 'lucide-svelte';
 	import type { Account } from '$lib/types/account';
 
-	const id = page.params.id;
-
 	interface Props {
-		data: { account: Account };
+		data: { account: Account; bankAccountId: string | null; investmentAccountId: string | null };
 		children: import('svelte').Snippet;
 	}
 
@@ -22,10 +20,20 @@
 		benefit: 'Benefício'
 	};
 
-	const tabs = [
-		{ label: 'Conta', route: `/friday/accounts/${id}/bank` },
-		{ label: 'Investimentos', route: `/friday/accounts/${id}/investment` }
-	];
+	// Tabs gerados dinamicamente com os IDs corretos de cada conta irmã
+	const tabs = $derived([
+		...(data.bankAccountId
+			? [{ label: 'Conta', route: `/friday/accounts/${data.bankAccountId}/bank` }]
+			: []),
+		...(data.investmentAccountId
+			? [
+					{
+						label: 'Investimentos',
+						route: `/friday/accounts/${data.investmentAccountId}/investment`
+					}
+				]
+			: [])
+	]);
 </script>
 
 <div class="flex flex-col gap-6 text-white">

@@ -21,6 +21,17 @@
 	let dateTransaction = $state('');
 	let loading = $state(false);
 
+	// Holding fields (investment accounts only)
+	let holdingSymbol = $state('');
+	let holdingAssetType = $state('stock');
+	let holdingQuantity = $state('');
+	let holdingPrice = $state('');
+
+	const isInvestment = $derived(
+		data.accounts.find((a: { id: string; type: string }) => a.id === data.selectedAccountId)
+			?.type === 'investment'
+	);
+
 	let newCategoryLabel = $state('');
 	let newSubcategoryLabel = $state('');
 	let tagLoading = $state(false);
@@ -70,12 +81,19 @@
 
 	$effect(() => {
 		if (form?.success) {
-			showToast('Transação registrada!', 'success');
+			if ((form as { holdingError?: boolean }).holdingError) {
+				showToast('Transação registrada, mas falha ao salvar ativo.', 'error');
+			} else {
+				showToast('Transação registrada!', 'success');
+			}
 			value = '';
 			description = '';
 			selectedCategoryId = '';
 			selectedSubcategoryId = '';
 			selectedCardId = '';
+			holdingSymbol = '';
+			holdingQuantity = '';
+			holdingPrice = '';
 		} else if (form?.tagCreated) {
 			showToast('Tag criada!', 'success');
 			newCategoryLabel = '';
@@ -217,6 +235,62 @@
 					</div>
 				{/if}
 			</div>
+
+			<!-- Ativo (investment only) -->
+			{#if isInvestment}
+				<div class="rounded-2xl border border-friday-blue/20 bg-friday-blue/5 p-4 flex flex-col gap-3">
+					<p class="{labelClass} text-friday-blue/70">Ativo investido</p>
+					<div class="flex gap-2">
+						<input
+							name="holdingSymbol"
+							type="text"
+							bind:value={holdingSymbol}
+							placeholder="PETR4, BTC..."
+							required
+							class="{inputClass} flex-1 uppercase"
+						/>
+						<select
+							name="holdingAssetType"
+							bind:value={holdingAssetType}
+							required
+							class="{inputClass} w-36"
+						>
+							<option value="stock">Ação</option>
+							<option value="etf">ETF</option>
+							<option value="bond">Renda Fixa</option>
+							<option value="cripto">Cripto</option>
+						</select>
+					</div>
+					<div class="flex gap-2">
+						<div class="flex flex-col gap-1 flex-1">
+							<span class={labelClass}>Quantidade</span>
+							<input
+								name="holdingQuantity"
+								type="number"
+								step="0.000001"
+								min="0"
+								bind:value={holdingQuantity}
+								placeholder="0"
+								required
+								class={inputClass}
+							/>
+						</div>
+						<div class="flex flex-col gap-1 flex-1">
+							<span class={labelClass}>Preço unitário</span>
+							<input
+								name="holdingPrice"
+								type="number"
+								step="0.01"
+								min="0"
+								bind:value={holdingPrice}
+								placeholder="0,00"
+								required
+								class={inputClass}
+							/>
+						</div>
+					</div>
+				</div>
+			{/if}
 
 			<!-- Método de pagamento + Cartão -->
 			<div class="rounded-2xl border border-white/10 bg-white/[0.03] p-4 flex flex-col gap-3">

@@ -43,6 +43,12 @@ export const actions: Actions = {
 		const description = data.get('description') as string;
 		const dateTransaction = data.get('dateTransaction') as string;
 
+		// Holding fields (presentes apenas para contas investment)
+		const holdingSymbol = (data.get('holdingSymbol') as string)?.trim().toUpperCase();
+		const holdingAssetType = data.get('holdingAssetType') as string;
+		const holdingQuantity = data.get('holdingQuantity') as string;
+		const holdingPrice = data.get('holdingPrice') as string;
+
 		if (!accountId || !tagId || !paymentMethodId || !currencyId || !value) {
 			return fail(400, { error: 'Campos obrigatórios não preenchidos' });
 		}
@@ -67,6 +73,26 @@ export const actions: Actions = {
 		if (!res.ok) {
 			const err = await res.json().catch(() => ({}));
 			return fail(res.status, { error: err.message ?? 'Erro ao criar transação' });
+		}
+
+		// Se for conta de investimento, cria o holding vinculado à transação
+		if (holdingSymbol && holdingAssetType && holdingQuantity && holdingPrice) {
+			const tx = await res.json();
+			const holdingRes = await apiFetch('/api/v1/finance/holdings', token, {
+				method: 'POST',
+				body: JSON.stringify({
+					transaction_id: tx.id,
+					symbol: holdingSymbol,
+					asset_type: holdingAssetType,
+					quantity: holdingQuantity,
+					price: holdingPrice
+				})
+			});
+
+			if (!holdingRes.ok) {
+				// Transação criada, mas holding falhou — avisa sem reverter
+				return { success: true, holdingError: true };
+			}
 		}
 
 		return { success: true };

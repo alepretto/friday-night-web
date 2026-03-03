@@ -1,130 +1,226 @@
 <script lang="ts">
-	import { onMount, onDestroy } from 'svelte';
-	import {
-		Chart,
-		LineController,
-		LineElement,
-		PointElement,
-		LinearScale,
-		CategoryScale,
-		Filler,
-		Tooltip
-	} from 'chart.js';
-	import { TrendingUpIcon, BarChart2Icon } from 'lucide-svelte';
+	import { TrendingUpIcon, BarChart2Icon, PlusIcon } from 'lucide-svelte';
+	import AporteModal from './AporteModal.svelte';
+	import { showToast } from '$lib/toast.svelte';
+	import { submitAction } from '$lib/utils/form-action';
+	import type { PageData } from './$types';
 
-	Chart.register(LineController, LineElement, PointElement, LinearScale, CategoryScale, Filler, Tooltip);
+	let { data }: { data: PageData } = $props();
 
-	let canvas = $state<HTMLCanvasElement | null>(null);
-	let chart: Chart | null = null;
+	const assetTypeLabel: Record<string, string> = {
+		stock: 'Ação',
+		etf: 'ETF',
+		bond: 'Renda Fixa',
+		cripto: 'Cripto'
+	};
 
-	const summaryCards = [
-		{ label: 'Total Investido', value: 'R$ —', sub: 'Soma de todos os ativos', color: 'text-friday-blue', bg: 'bg-friday-blue/10 border-friday-blue/20', icon: TrendingUpIcon },
-		{ label: 'Retorno Total', value: '—', sub: 'Desde o início', color: 'text-success', bg: 'bg-success/10 border-success/20', icon: TrendingUpIcon },
-		{ label: 'Retorno do Mês', value: '—', sub: 'Variação mensal', color: 'text-friday-orange', bg: 'bg-friday-orange/10 border-friday-orange/20', icon: TrendingUpIcon }
-	];
+	const assetTypeColor: Record<string, string> = {
+		stock: 'text-friday-blue bg-friday-blue/10',
+		etf: 'text-friday-orange bg-friday-orange/10',
+		bond: 'text-success bg-success/10',
+		cripto: 'text-purple-400 bg-purple-400/10'
+	};
 
-	// Placeholder: últimos 30 dias
-	const labels = Array.from({ length: 30 }, (_, i) => {
-		const d = new Date();
-		d.setDate(d.getDate() - (29 - i));
-		return d.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' });
+	// Agrupa holdings por símbolo, somando quantidades e calculando preço médio ponderado
+	const positions = $derived(() => {
+		const map = new Map<
+			string,
+			{ symbol: string; assetType: string; totalQty: number; totalInvested: number; count: number }
+		>();
+
+		for (const h of data.holdings) {
+			const key = `${h.symbol}:${h.asset_type}`;
+			const qty = parseFloat(h.quantity);
+			const price = parseFloat(h.price);
+			const existing = map.get(key) ?? {
+				symbol: h.symbol,
+				assetType: h.asset_type,
+				totalQty: 0,
+				totalInvested: 0,
+				count: 0
+			};
+			existing.totalQty += qty;
+			existing.totalInvested += qty * price;
+			existing.count++;
+			map.set(key, existing);
+		}
+
+		return [...map.values()].sort((a, b) => b.totalInvested - a.totalInvested);
 	});
 
-	const placeholderData = Array.from({ length: 30 }, (_, i) => {
-		return parseFloat((100 + i * 0.5 + (Math.random() - 0.4) * 3).toFixed(2));
-	});
+	const totalInvestido = $derived(positions().reduce((s, p) => s + p.totalInvested, 0));
 
-	onMount(() => {
-		if (!canvas) return;
+	const fmtBRL = (v: number) =>
+		v.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
 
-		const ctx = canvas.getContext('2d');
-		if (!ctx) return;
+	const fmtQty = (v: number) =>
+		v % 1 === 0 ? v.toFixed(0) : v.toFixed(6).replace(/\.?0+$/, '');
 
-		const gradient = ctx.createLinearGradient(0, 0, 0, 200);
-		gradient.addColorStop(0, 'rgba(59, 130, 246, 0.3)');
-		gradient.addColorStop(1, 'rgba(59, 130, 246, 0)');
+	// Modal
+	let modalOpen = $state(false);
+	let saving = $state(false);
 
-		chart = new Chart(canvas, {
-			type: 'line',
-			data: {
-				labels,
-				datasets: [
-					{
-						data: placeholderData,
-						borderColor: '#3b82f6',
-						borderWidth: 2,
-						fill: true,
-						backgroundColor: gradient,
-						pointRadius: 0,
-						tension: 0.4
-					}
-				]
-			},
-			options: {
-				responsive: true,
-				maintainAspectRatio: false,
-				plugins: {
-					legend: { display: false },
-					tooltip: {
-						callbacks: {
-							label: (ctx) => `R$ ${(ctx.parsed.y ?? 0).toFixed(2)}`
-						}
-					}
-				},
-				scales: {
-					x: {
-						grid: { color: 'rgba(255,255,255,0.05)' },
-						ticks: { color: 'rgba(255,255,255,0.3)', maxTicksLimit: 6, font: { size: 11 } }
-					},
-					y: {
-						grid: { color: 'rgba(255,255,255,0.05)' },
-						ticks: { color: 'rgba(255,255,255,0.3)', font: { size: 11 } }
-					}
-				}
-			}
+	async function handleSave(formData: {
+		tagId: string;
+		paymentMethodId: string;
+		currencyId: string;
+		value: string;
+		symbol: string;
+		assetType: string;
+		quantity: string;
+		price: string;
+		description: string;
+		dateTransaction: string;
+	}) {
+		saving = true;
+		const { success, error } = await submitAction('createAporte', {
+			tagId: formData.tagId,
+			paymentMethodId: formData.paymentMethodId,
+			currencyId: formData.currencyId,
+			value: formData.value,
+			symbol: formData.symbol,
+			assetType: formData.assetType,
+			quantity: formData.quantity,
+			price: formData.price,
+			description: formData.description,
+			dateTransaction: formData.dateTransaction
 		});
-	});
+		saving = false;
 
-	onDestroy(() => {
-		chart?.destroy();
-	});
+		if (success) {
+			modalOpen = false;
+			showToast('Aporte registrado com sucesso!', 'success');
+		} else {
+			showToast(error ?? 'Erro ao registrar aporte', 'error');
+		}
+	}
 </script>
+
+<AporteModal
+	open={modalOpen}
+	{saving}
+	tagId={data.investimentoTagId}
+	paymentMethodId={data.transferenciaPaymentMethodId}
+	currencies={data.availableCurrencies}
+	defaultCurrencyId={data.defaultCurrencyId}
+	onclose={() => (modalOpen = false)}
+	onsave={handleSave}
+/>
 
 <div class="flex flex-col gap-6">
 	<!-- Summary cards -->
 	<div class="grid grid-cols-3 gap-4">
-		{#each summaryCards as card}
-			<div class="rounded-xl border {card.bg} p-5">
-				<div class="mb-3 flex items-center justify-between">
-					<span class="text-xs font-medium uppercase tracking-widest text-white/40">{card.label}</span>
-					<div class="rounded-lg p-1.5 {card.bg}">
-						<card.icon size={16} class={card.color} />
-					</div>
+		<div class="rounded-xl border border-friday-blue/20 bg-friday-blue/10 p-5">
+			<div class="mb-3 flex items-center justify-between">
+				<span class="text-xs font-medium uppercase tracking-widest text-white/40">Total Investido</span>
+				<div class="rounded-lg bg-friday-blue/10 p-1.5">
+					<TrendingUpIcon size={16} class="text-friday-blue" />
 				</div>
-				<p class="text-2xl font-bold {card.color}">{card.value}</p>
-				<p class="mt-1 text-xs text-white/30">{card.sub}</p>
 			</div>
-		{/each}
-	</div>
+			<p class="text-2xl font-bold text-friday-blue">{fmtBRL(totalInvestido)}</p>
+			<p class="mt-1 text-xs text-white/30">Soma de todos os aportes</p>
+		</div>
 
-	<!-- Gráfico de retorno diário -->
-	<div class="rounded-xl border border-white/8 bg-white/[0.03] p-6">
-		<h2 class="mb-1 text-sm font-semibold uppercase tracking-wider text-white/60">Retorno Diário</h2>
-		<p class="mb-4 text-xs text-white/25">Dados placeholder — integração com API em breve</p>
-		<div class="h-48">
-			<canvas bind:this={canvas} class="h-full w-full"></canvas>
+		<div class="rounded-xl border border-white/8 bg-white/[0.03] p-5">
+			<div class="mb-3 flex items-center justify-between">
+				<span class="text-xs font-medium uppercase tracking-widest text-white/40">Posições</span>
+				<div class="rounded-lg bg-white/5 p-1.5">
+					<BarChart2Icon size={16} class="text-white/30" />
+				</div>
+			</div>
+			<p class="text-2xl font-bold text-white">{positions().length}</p>
+			<p class="mt-1 text-xs text-white/30">
+				{data.holdings.length} aporte{data.holdings.length !== 1 ? 's' : ''} registrado{data.holdings.length !== 1 ? 's' : ''}
+			</p>
+		</div>
+
+		<div class="flex items-center justify-center rounded-xl border border-white/8 bg-white/[0.03] p-5">
+			<button
+				onclick={() => (modalOpen = true)}
+				class="flex cursor-pointer items-center gap-2 rounded-xl border border-friday-blue/20 bg-friday-blue/15 px-4 py-2 text-sm font-semibold text-friday-blue transition hover:bg-friday-blue/25"
+			>
+				<PlusIcon size={14} />
+				Registrar aporte
+			</button>
 		</div>
 	</div>
 
-	<!-- Ativos (holdings) -->
-	<div class="rounded-xl border border-white/8 bg-white/[0.03] p-6">
-		<h2 class="mb-4 text-sm font-semibold uppercase tracking-wider text-white/60">Ativos</h2>
-		<div class="flex flex-col items-center justify-center gap-3 py-10 text-center">
-			<div class="flex h-12 w-12 items-center justify-center rounded-2xl border border-white/10 bg-white/5">
-				<BarChart2Icon size={22} class="text-white/20" />
-			</div>
-			<p class="text-sm font-medium text-white/30">Nenhum ativo registrado</p>
-			<p class="text-xs text-white/20">Registre transações de investimento para ver seus ativos aqui</p>
+	<!-- Posições -->
+	<div class="rounded-xl border border-white/8 bg-white/[0.03]">
+		<div class="flex items-center justify-between border-b border-white/8 px-5 py-4">
+			<h2 class="text-sm font-semibold uppercase tracking-wider text-white/60">Posições</h2>
+			{#if positions().length > 0}
+				<button
+					onclick={() => (modalOpen = true)}
+					class="flex cursor-pointer items-center gap-1.5 rounded-lg border border-friday-blue/20 bg-friday-blue/10 px-3 py-1 text-xs font-semibold text-friday-blue transition hover:bg-friday-blue/20"
+				>
+					<PlusIcon size={11} />
+					Novo aporte
+				</button>
+			{/if}
 		</div>
+
+		{#if positions().length === 0}
+			<div class="flex flex-col items-center justify-center gap-3 py-14 text-center">
+				<div class="flex h-12 w-12 items-center justify-center rounded-2xl border border-white/10 bg-white/5">
+					<BarChart2Icon size={22} class="text-white/20" />
+				</div>
+				<p class="text-sm font-medium text-white/30">Nenhum ativo registrado</p>
+				<p class="text-xs text-white/20">Registre seu primeiro aporte para ver as posições</p>
+				<button
+					onclick={() => (modalOpen = true)}
+					class="mt-2 cursor-pointer rounded-lg bg-friday-blue/15 px-4 py-2 text-xs font-semibold text-friday-blue transition hover:bg-friday-blue/25"
+				>
+					Registrar aporte
+				</button>
+			</div>
+		{:else}
+			<div class="divide-y divide-white/5">
+				{#each positions() as pos}
+					<div class="flex items-center gap-4 px-5 py-4">
+						<div class="w-24 shrink-0">
+							<p class="font-mono text-sm font-bold text-white">{pos.symbol}</p>
+							<span class="mt-0.5 inline-block rounded px-1.5 py-0.5 text-[10px] font-semibold {assetTypeColor[pos.assetType] ?? 'text-white/40 bg-white/5'}">
+								{assetTypeLabel[pos.assetType] ?? pos.assetType}
+							</span>
+						</div>
+						<div class="flex-1">
+							<p class="text-xs text-white/40">Qtd.</p>
+							<p class="text-sm font-semibold text-white">{fmtQty(pos.totalQty)}</p>
+						</div>
+						<div class="flex-1">
+							<p class="text-xs text-white/40">Preço médio</p>
+							<p class="text-sm font-semibold text-white">
+								{fmtBRL(pos.totalQty > 0 ? pos.totalInvested / pos.totalQty : 0)}
+							</p>
+						</div>
+						<div class="text-right">
+							<p class="text-xs text-white/40">Investido</p>
+							<p class="text-sm font-bold text-friday-blue">{fmtBRL(pos.totalInvested)}</p>
+						</div>
+					</div>
+				{/each}
+			</div>
+		{/if}
 	</div>
+
+	<!-- Histórico de aportes -->
+	{#if data.holdings.length > 0}
+		<div class="rounded-xl border border-white/8 bg-white/[0.03]">
+			<div class="border-b border-white/8 px-5 py-4">
+				<h2 class="text-sm font-semibold uppercase tracking-wider text-white/60">Histórico de Aportes</h2>
+			</div>
+			<div class="divide-y divide-white/5">
+				{#each data.holdings as h (h.id)}
+					{@const qty = parseFloat(h.quantity)}
+					{@const price = parseFloat(h.price)}
+					<div class="flex items-center gap-4 px-5 py-3">
+						<span class="w-16 shrink-0 font-mono text-xs font-bold text-white/70">{h.symbol}</span>
+						<span class="flex-1 text-xs text-white/40">{fmtQty(qty)} × {fmtBRL(price)}</span>
+						<span class="text-sm font-semibold text-friday-blue">{fmtBRL(qty * price)}</span>
+					</div>
+				{/each}
+			</div>
+		</div>
+	{/if}
 </div>
