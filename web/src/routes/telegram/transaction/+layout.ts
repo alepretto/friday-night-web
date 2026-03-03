@@ -172,7 +172,7 @@ export const load: LayoutLoad = async ({ fetch, url, parent }) => {
 		label: c.label
 	}));
 	const defaultCurrencyId =
-		currencies.find((c: { symbol: string }) => c.symbol === 'BRL')?.id ?? currencies[0]?.id ?? '';
+		currencies.find((c: { symbol: string }) => c.symbol === 'R$' || c.symbol === 'BRL')?.id ?? currencies[0]?.id ?? '';
 
 	// — Cards —
 	const cardsData = cardsRes.ok ? await cardsRes.json() : { items: [] };
