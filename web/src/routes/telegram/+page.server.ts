@@ -25,11 +25,14 @@ export const load: PageServerLoad = async ({ locals }) => {
 			(institutionsData.items ?? []).map((inst: any) => [inst.id, inst.name])
 		);
 
-		const accounts = (accountsData.items ?? []).map((acc: any) => ({
-			id: acc.id,
-			label: institutionMap.get(acc.financial_institution_id) ?? acc.financial_institution_id,
-			type: acc.type
-		}));
+		const accounts = (accountsData.items ?? []).map((acc: any) => {
+			const instName = institutionMap.get(acc.financial_institution_id) ?? acc.financial_institution_id;
+			return {
+				id: acc.id,
+				label: acc.subtype ? `${instName} (${acc.subtype})` : instName,
+				type: acc.type
+			};
+		});
 
 		const accountTypes = (typesData.types ?? []).map((t: any) => ({
 			id: t.id,

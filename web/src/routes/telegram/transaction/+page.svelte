@@ -100,7 +100,7 @@
 		type="button"
 		onclick={() => (activeTab = 'transaction')}
 		class="pb-3 pr-6 text-sm font-medium transition-colors
-			{activeTab === 'transaction' ? 'border-b-2 border-friday-blue text-white' : 'text-white/30'}"
+			{activeTab === 'transaction' ? 'border-b-2 border-friday-blue text-white -mb-px' : 'text-white/30'}"
 	>
 		Transação
 	</button>
@@ -108,7 +108,7 @@
 		type="button"
 		onclick={() => (activeTab = 'tag')}
 		class="pb-3 pr-6 text-sm font-medium transition-colors
-			{activeTab === 'tag' ? 'border-b-2 border-friday-blue text-white' : 'text-white/30'}"
+			{activeTab === 'tag' ? 'border-b-2 border-friday-blue text-white -mb-px' : 'text-white/30'}"
 	>
 		Nova tag
 	</button>

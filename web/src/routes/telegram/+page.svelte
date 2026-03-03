@@ -250,9 +250,10 @@
 
 				<button
 					type="submit"
-					class="mt-2 w-full rounded-2xl bg-friday-blue py-4 text-sm font-semibold tracking-wide text-white transition hover:opacity-90"
+					disabled={selecting}
+					class="mt-2 w-full rounded-2xl bg-friday-blue py-4 text-sm font-semibold tracking-wide text-white transition hover:opacity-90 disabled:opacity-40"
 				>
-					Continuar
+					{selecting ? 'Carregando...' : 'Continuar'}
 				</button>
 			</form>
 		</div>

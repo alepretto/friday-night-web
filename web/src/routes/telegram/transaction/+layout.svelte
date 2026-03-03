@@ -77,7 +77,8 @@
 					<select
 						value={accountId}
 						onchange={onAccountChange}
-						class="appearance-none rounded-full border border-white/10 bg-white/[0.05] py-1.5 pl-3 pr-7 text-xs font-medium text-white/80 outline-none transition focus:border-friday-blue/40"
+						disabled={!!navigating}
+					class="appearance-none rounded-full border border-white/10 bg-white/[0.05] py-1.5 pl-3 pr-7 text-xs font-medium text-white/80 outline-none transition focus:border-friday-blue/40 disabled:opacity-40"
 						style="max-width: 160px"
 					>
 						{#each data.accounts as account}
