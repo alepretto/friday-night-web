@@ -37,22 +37,6 @@
 	});
 
 	$effect(() => {
-		const formSuccess = form?.success;
-		const formError = form?.error;
-		const formNeedsLink = form?.needsLink;
-		
-		if (formNeedsLink) {
-			stage = 'needsLink';
-		} else if (formError) {
-			errorMessage = formError;
-			stage = 'error';
-		} else if (formSuccess) {
-			// Autenticação bem-sucedida - mostrar seletor de contas
-			stage = 'selectAccount';
-		}
-	});
-
-	$effect(() => {
 		if (stage === 'selectAccount' && data.accounts.length > 0) {
 			// Selecionar automaticamente o primeiro tipo de conta
 			const firstType = data.accounts[0]?.type;
@@ -79,7 +63,9 @@
 <!-- Hidden auto-submit form -->
 <form bind:this={authForm} method="POST" action="?/auth" use:enhance={() => {
 	return async ({ result, update }) => {
-		// Atualizar o stage manualmente baseado no resultado ANTES do update
+		// Primeiro fazer o update para que data.accounts seja preenchido
+		await update({ reset: false });
+		// Depois atualizar o stage com base no resultado
 		if (result.type === 'success') {
 			if ((result.data as any)?.success) {
 				stage = 'selectAccount';
@@ -95,7 +81,6 @@
 			errorMessage = result.error?.message ?? 'Erro desconhecido';
 			stage = 'error';
 		}
-		await update({ reset: false });
 	};
 }} class="hidden">
 	<input type="hidden" name="init_data" value={initData} />

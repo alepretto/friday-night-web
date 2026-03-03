@@ -10,17 +10,24 @@ export const load: PageServerLoad = async ({ locals }) => {
 	}
 
 	try {
-		const [accountsRes, typesRes] = await Promise.all([
+		const [accountsRes, typesRes, institutionsRes] = await Promise.all([
 			apiFetch('/api/v1/finance/accounts?size=100', token),
-			apiFetch('/api/v1/finance/accounts/types', token)
+			apiFetch('/api/v1/finance/accounts/types', token),
+			apiFetch('/api/v1/finance/financial-institutions?size=100', token)
 		]);
 
 		const accountsData = accountsRes.ok ? await accountsRes.json() : { items: [] };
 		const typesData = typesRes.ok ? await typesRes.json() : { types: [] };
+		const institutionsData = institutionsRes.ok ? await institutionsRes.json() : { items: [] };
+
+		// Criar mapa de id -> nome da instituição
+		const institutionMap = new Map<string, string>(
+			(institutionsData.items ?? []).map((inst: any) => [inst.id, inst.name])
+		);
 
 		const accounts = (accountsData.items ?? []).map((acc: any) => ({
 			id: acc.id,
-			label: acc.label,
+			label: institutionMap.get(acc.financial_institution_id) ?? acc.financial_institution_id,
 			type: acc.type
 		}));
 
