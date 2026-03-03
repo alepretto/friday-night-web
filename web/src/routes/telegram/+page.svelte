@@ -1,6 +1,7 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
 	import { enhance } from '$app/forms';
+	import { goto } from '$app/navigation';
 	import type { ActionData, PageData } from './$types';
 
 	let { form: initialForm, data }: { form: ActionData | undefined; data: PageData } = $props();
@@ -54,6 +55,7 @@
 	});
 
 	let linkLoading = $state(false);
+	let selecting = $state(false);
 </script>
 
 <!-- Hidden auto-submit form -->
@@ -170,6 +172,14 @@
 	</div>
 {:else if stage === 'selectAccount'}
 	<!-- Seletor de contas -->
+	{#if selecting}
+		<div class="flex min-h-screen items-center justify-center">
+			<div class="flex flex-col items-center gap-4">
+				<div class="h-8 w-8 animate-spin rounded-full border-2 border-white/10 border-t-friday-blue"></div>
+				<p class="text-xs uppercase tracking-widest text-white/30">Carregando...</p>
+			</div>
+		</div>
+	{:else}
 	<div
 		class="flex min-h-screen items-center justify-center p-6"
 		style="padding-top: max(5rem, calc(var(--tg-safe-area-inset-top, 0px) + 2rem))"
@@ -191,12 +201,12 @@
 				method="POST"
 				action="?/selectAccount"
 				onsubmit={(e) => {
-					// Previne o comportamento padrão e faz o redirecionamento manualmente
 					e.preventDefault();
 					const formData = new FormData(e.target as HTMLFormElement);
 					const accountId = formData.get('accountId') as string;
 					if (accountId) {
-						window.location.href = `/telegram/transaction?account_id=${accountId}`;
+						selecting = true;
+						goto(`/telegram/transaction?account_id=${accountId}`);
 					}
 				}}
 				class="flex flex-col gap-4"
@@ -247,4 +257,5 @@
 			</form>
 		</div>
 	</div>
+	{/if}
 {/if}
