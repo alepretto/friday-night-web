@@ -1,3 +1,7 @@
+<svelte:head>
+	<script src="https://telegram.org/js/telegram-web-app.js"></script>
+</svelte:head>
+
 <script lang="ts">
 	import Toast from '$lib/components/ui/Toast.svelte';
 	import { getToastState } from '$lib/toast.svelte';
