@@ -9,6 +9,8 @@
 
 	const accountId = $derived(page.url.searchParams.get('account_id') ?? data.accounts[0]?.id ?? '');
 
+	let headerHeight = $state(0);
+
 	// Feedback visual instantâneo: pendingTab ativa visualmente antes dos dados chegarem
 	let pendingTab = $state<string | null>(null);
 	$effect(() => {
@@ -61,6 +63,7 @@
 
 	<!-- Header fixo com safe area; border-b muda de cor enquanto navega -->
 	<header
+		bind:clientHeight={headerHeight}
 		class="fixed left-0 right-0 top-0 z-40 border-b bg-[#0d0d0f] {navigating ? 'border-friday-blue/50' : 'border-white/8'}"
 		style="padding-top: calc(var(--tg-safe-area-inset-top, 0px) + var(--tg-content-safe-area-inset-top, 44px))"
 	>
@@ -91,12 +94,8 @@
 		</div>
 	</header>
 
-	<!-- Spacer igual à altura do header (py-3 + h-6 icon + padding-top do safe area)
-	     O cálculo acompanha o header dinâmico -->
-	<div
-		style="height: calc(var(--tg-safe-area-inset-top, 0px) + var(--tg-content-safe-area-inset-top, 44px) + 3rem)"
-		class="shrink-0"
-	></div>
+	<!-- Spacer com a altura exata do header medida pelo bind:clientHeight -->
+	<div style="height: {headerHeight}px" class="shrink-0"></div>
 
 	<!-- Scroll container -->
 	<div class="flex-1 overflow-y-auto pb-20">
