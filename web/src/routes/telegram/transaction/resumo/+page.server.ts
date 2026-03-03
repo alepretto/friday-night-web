@@ -1,16 +1,18 @@
 import type { PageServerLoad } from './$types';
 import { apiFetch } from '$lib/server/api';
 
-interface ApiTransaction {
-	id: string;
-	tag_id: string;
-	value: string;
-}
-
-interface ApiTag {
-	id: string;
-	category: { id: string; label: string; type: 'outcome' | 'income' };
-	subcategory: { id: string; label: string };
+interface ApiSummary {
+	total_income: string;
+	total_expense: string;
+	balance: string;
+	transaction_count: number;
+	by_category: {
+		category_label: string;
+		category_type: string;
+		total: string;
+		transaction_count: number;
+		percent: string;
+	}[];
 }
 
 export const load: PageServerLoad = async ({ locals, url, parent }) => {
@@ -44,63 +46,45 @@ export const load: PageServerLoad = async ({ locals, url, parent }) => {
 
 	const fmt = (d: Date) => d.toISOString().slice(0, 10);
 
-	const [tagsRes, curRes, prevRes] = await Promise.all([
-		apiFetch('/api/v1/finance/tags?size=100', token),
+	const [curRes, prevRes] = await Promise.all([
 		apiFetch(
-			`/api/v1/finance/transactions?account_id=${accountId}&date_start=${encodeURIComponent(fmt(curStart) + 'T00:00:00')}&date_end=${encodeURIComponent(fmt(curEnd) + 'T23:59:59')}&page=1&size=200`,
+			`/api/v1/finance/transactions/summary?account_id=${accountId}&date_start=${encodeURIComponent(fmt(curStart) + 'T00:00:00')}&date_end=${encodeURIComponent(fmt(curEnd) + 'T23:59:59')}`,
 			token
 		),
 		apiFetch(
-			`/api/v1/finance/transactions?account_id=${accountId}&date_start=${encodeURIComponent(fmt(prevStart) + 'T00:00:00')}&date_end=${encodeURIComponent(fmt(prevEnd) + 'T23:59:59')}&page=1&size=200`,
+			`/api/v1/finance/transactions/summary?account_id=${accountId}&date_start=${encodeURIComponent(fmt(prevStart) + 'T00:00:00')}&date_end=${encodeURIComponent(fmt(prevEnd) + 'T23:59:59')}`,
 			token
 		)
 	]);
 
-	const tagsData = tagsRes.ok ? await tagsRes.json() : { items: [] };
-	const curData = curRes.ok ? await curRes.json() : { items: [] };
-	const prevData = prevRes.ok ? await prevRes.json() : { items: [] };
+	const emptySummary: ApiSummary = {
+		total_income: '0',
+		total_expense: '0',
+		balance: '0',
+		transaction_count: 0,
+		by_category: []
+	};
 
-	const tagsMap = new Map<string, ApiTag>();
-	for (const tag of tagsData.items ?? []) tagsMap.set(tag.id, tag);
+	const curSummary: ApiSummary = curRes.ok ? await curRes.json() : emptySummary;
+	const prevSummary: ApiSummary = prevRes.ok ? await prevRes.json() : emptySummary;
 
-	function sumByType(items: ApiTransaction[], type: 'outcome' | 'income'): number {
-		return items
-			.filter((t) => tagsMap.get(t.tag_id)?.category.type === type)
-			.reduce((acc, t) => acc + parseFloat(t.value), 0);
-	}
-
-	const curItems: ApiTransaction[] = curData.items ?? [];
-	const prevItems: ApiTransaction[] = prevData.items ?? [];
-
-	const gastoMes = sumByType(curItems, 'outcome');
-	const entradaMes = sumByType(curItems, 'income');
-	const saldoMes = entradaMes - gastoMes;
-	const gastoPrevMes = sumByType(prevItems, 'outcome');
+	const gastoMes = parseFloat(curSummary.total_expense);
+	const entradaMes = parseFloat(curSummary.total_income);
+	const saldoMes = parseFloat(curSummary.balance);
+	const gastoPrevMes = parseFloat(prevSummary.total_expense);
 
 	const deltaPercent =
 		gastoPrevMes > 0 ? ((gastoMes - gastoPrevMes) / gastoPrevMes) * 100 : null;
 
 	// Top 5 categories by spending (outcome only)
-	const catMap = new Map<string, { label: string; total: number }>();
-	for (const t of curItems) {
-		const tag = tagsMap.get(t.tag_id);
-		if (!tag || tag.category.type !== 'outcome') continue;
-		const catId = tag.category.id;
-		const existing = catMap.get(catId);
-		if (existing) {
-			existing.total += parseFloat(t.value);
-		} else {
-			catMap.set(catId, { label: tag.category.label, total: parseFloat(t.value) });
-		}
-	}
-
-	const topCategorias = [...catMap.values()]
-		.sort((a, b) => b.total - a.total)
+	const topCategorias = curSummary.by_category
+		.filter((c) => c.category_type === 'outcome')
+		.sort((a, b) => parseFloat(b.total) - parseFloat(a.total))
 		.slice(0, 5)
 		.map((c) => ({
-			label: c.label,
-			total: c.total,
-			percent: gastoMes > 0 ? (c.total / gastoMes) * 100 : 0
+			label: c.category_label,
+			total: parseFloat(c.total),
+			percent: parseFloat(c.percent)
 		}));
 
 	const mesAtual = curStart.toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' });
