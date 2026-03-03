@@ -3,6 +3,7 @@
 	import AccountModal from './_components/AccountModal.svelte';
 	import ConfirmDialog from '$lib/components/ui/ConfirmDialog.svelte';
 	import LoadingSpinner from '$lib/components/ui/LoadingSpinner.svelte';
+	import { WalletIcon } from 'lucide-svelte';
 	import { showToast } from '$lib/toast.svelte';
 	import { useStreamedData } from '$lib/utils/streamed-data.svelte';
 	import { submitAction } from '$lib/utils/form-action';
@@ -80,6 +81,13 @@
 	function handleEdit(account: Account) {
 		showToast('Edição de conta em breve!', 'success');
 	}
+
+	const groups = [
+		{ key: 'bank', label: 'Bank' },
+		{ key: 'investment', label: 'Investimentos' },
+		{ key: 'cash', label: 'Cash' },
+		{ key: 'benefit', label: 'Benefícios' }
+	] as const;
 </script>
 
 {#if !streamed.isLoading && streamed.data}
@@ -109,54 +117,58 @@
 	}}
 />
 
-<main>
-	<header class="text-white">
-		<h1 class="text-4xl font-bold">Accounts</h1>
-		<p>Gerencie as contas que você possui.</p>
-	</header>
+<div class="flex flex-col gap-6 text-white">
+	<!-- Page header -->
+	<div class="flex items-start justify-between">
+		<div class="flex items-center gap-3">
+			<div
+				class="flex h-9 w-9 items-center justify-center rounded-xl border border-friday-blue/20 bg-friday-blue/10"
+			>
+				<WalletIcon size={18} class="text-friday-blue" />
+			</div>
+			<div>
+				<h1 class="text-xl font-bold text-white">Contas</h1>
+				<p class="text-sm text-white/40">Gerencie as contas que você possui</p>
+			</div>
+		</div>
+		<button
+			onclick={() => (createOpen = true)}
+			disabled={creating}
+			class="cursor-pointer rounded-xl border border-friday-blue/20 bg-friday-blue/15 px-4 py-2 text-sm font-semibold text-friday-blue transition hover:bg-friday-blue/25 disabled:opacity-50"
+		>
+			+ Nova Conta
+		</button>
+	</div>
 
 	{#if streamed.isLoading}
 		<LoadingSpinner message="Carregando contas..." minHeight="min-h-96" />
 	{:else}
-		<section class="text-white">
-			<div class="flex items-center justify-end p-10">
-				<div class="flex flex-col items-end gap-1">
-					{#if createError}
-						<p class="text-sm text-failed">{createError}</p>
-					{/if}
-					<button
-						onclick={() => (createOpen = true)}
-						disabled={creating}
-						class="cursor-pointer rounded-3xl border border-success/60 bg-success/40 px-10 py-3 transition-colors hover:bg-success disabled:opacity-50"
-					>
-						New Account
-					</button>
+		{#each groups as group (group.key)}
+			{@const groupAccounts = accounts.filter((a) => a.type === group.key)}
+			{#if groupAccounts.length}
+				<div class="flex flex-col gap-3">
+					<h2 class="text-xs font-semibold uppercase tracking-wider text-white/40">
+						{group.label}
+					</h2>
+					<div class="grid grid-cols-3 gap-4">
+						{#each groupAccounts as account (account.id)}
+							<AccountCard {account} onedit={handleEdit} onarchive={askToggle} />
+						{/each}
+					</div>
 				</div>
-			</div>
+			{/if}
+		{/each}
 
-			<div class="flex flex-col gap-4">
-				{#each [{ key: 'bank', label: 'Bank' }, { key: 'investment', label: 'Investimentos' }, { key: 'cash', label: 'Cash' }, { key: 'benefit', label: 'Benefícios' }] as group (group.key)}
-					{@const groupAccounts = accounts.filter((a) => a.type === group.key)}
-					{#if groupAccounts.length}
-						<div>
-							<div class="my-3 border-b border-secondary/50 pb-3">
-								<span class="text-4xl font-bold">{group.label}</span>
-							</div>
-							<div class="grid grid-cols-3 gap-4">
-								{#each groupAccounts as account (account.id)}
-									<AccountCard {account} onedit={handleEdit} onarchive={askToggle} />
-								{/each}
-							</div>
-						</div>
-					{/if}
-				{/each}
-
-				{#if accounts.length === 0}
-					<p class="py-20 text-center text-gray-500">
-						Nenhuma conta encontrada. Crie sua primeira conta!
-					</p>
-				{/if}
+		{#if accounts.length === 0}
+			<div class="flex flex-col items-center justify-center gap-3 py-20 text-center">
+				<div
+					class="flex h-12 w-12 items-center justify-center rounded-2xl border border-white/10 bg-white/5"
+				>
+					<WalletIcon size={22} class="text-white/20" />
+				</div>
+				<p class="text-sm font-medium text-white/30">Nenhuma conta encontrada</p>
+				<p class="text-xs text-white/20">Crie sua primeira conta para começar</p>
 			</div>
-		</section>
+		{/if}
 	{/if}
-</main>
+</div>
