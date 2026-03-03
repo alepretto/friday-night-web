@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { onMount } from 'svelte';
 	import { page, navigating } from '$app/state';
 	import { goto } from '$app/navigation';
 	import { PlusIcon, ClockIcon, BarChart2Icon, ChevronDownIcon } from 'lucide-svelte';
@@ -34,6 +35,14 @@
 				? '/resumo'
 				: ''
 	);
+
+	onMount(() => {
+		const tg = (window as any).Telegram?.WebApp;
+		if (tg) {
+			tg.ready();
+			tg.expand();
+		}
+	});
 </script>
 
 <!--

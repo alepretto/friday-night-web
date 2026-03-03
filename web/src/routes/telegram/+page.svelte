@@ -1,7 +1,3 @@
-<svelte:head>
-	<script src="https://telegram.org/js/telegram-web-app.js"></script>
-</svelte:head>
-
 <script lang="ts">
 	import { onMount } from 'svelte';
 	import { enhance } from '$app/forms';
